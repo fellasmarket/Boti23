@@ -4,6 +4,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import * as XLSX from "xlsx";
 import { GoogleGenAI } from "@google/genai";
 import { dbManager, type Product, type Order, type OrderItem } from "./db.ts";
 
@@ -252,6 +253,109 @@ apiRouter.patch("/products/:id", (req, res) => {
 apiRouter.delete("/products/:id", (req, res) => {
   const ok = dbManager.deleteProduct(Number(req.params.id));
   res.json({ ok });
+});
+
+apiRouter.delete("/admin/products/all", (_req, res) => {
+  dbManager.deleteAllProducts();
+  res.json({ ok: true });
+});
+
+apiRouter.get("/admin/download-template", (_req, res) => {
+  try {
+    const data = [
+      { Nombre: "Cerveza Cristal 350cc", Pasillo: "Cervezas", Categoria: "Latas", Subcategoria: "Nacionales", Precio: 1200, Oferta: "No", Imagen: "https://images.unsplash.com/photo-1608270127590-27f991f89cd0?w=600&auto=format&fit=crop&q=80" },
+      { Nombre: "Pisco Mistral 35° 750cc", Pasillo: "Licores y Destilados", Categoria: "Piscos", Subcategoria: "Piscos 35°", Precio: 7990, Oferta: "Si", Imagen: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80" },
+      { Nombre: "Bebida Coca Cola 1.5L", Pasillo: "Bebidas y Jugos", Categoria: "Bebidas Gaseosas", Subcategoria: "Descartables", Precio: 2100, Oferta: "No", Imagen: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=600&auto=format&fit=crop&q=80" }
+    ];
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Productos");
+    const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+
+    res.setHeader("Content-Disposition", 'attachment; filename="plantilla_productos_fellas.xlsx"');
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.send(buf);
+  } catch (err: any) {
+    res.status(500).json({ error: "Error generating template" });
+  }
+});
+
+apiRouter.post("/admin/import-excel", (req, res) => {
+  try {
+    const { base64 } = req.body;
+    if (!base64) {
+      res.status(400).json({ error: "No file data provided" });
+      return;
+    }
+    const buffer = Buffer.from(base64, "base64");
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    const rows: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+    let count = 0;
+    for (const row of rows) {
+      const keys = Object.keys(row);
+      const findKey = (candidates: string[]) => {
+        const found = keys.find(k => candidates.includes(k.toLowerCase().trim()));
+        return found ? row[found] : undefined;
+      };
+
+      const name = String(findKey(["nombre", "nombre del producto", "producto", "titulo", "name", "product"]) || "").trim();
+      if (!name) continue;
+
+      const price = Number(findKey(["precio", "valor", "price"]) || 0);
+      const aisle = String(findKey(["pasillo", "seccion", "aisle"]) || "General").trim();
+      const category = String(findKey(["categoria", "categoría", "category"]) || "General").trim();
+      const subcategory = String(findKey(["subcategoria", "subcategoría", "sub-categoria", "subcategory"]) || "General").trim();
+      const image = String(findKey(["imagen", "foto", "image", "url"]) || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=600&auto=format&fit=crop&q=80").trim();
+      const ofertaRaw = findKey(["oferta", "en oferta", "oferta?"]);
+      const oferta = ofertaRaw === true || String(ofertaRaw).toLowerCase() === 'si' || String(ofertaRaw).toLowerCase() === 'true' || String(ofertaRaw) === '1';
+
+      // Ensure aisle exists
+      const existingAisles = dbManager.getAisles();
+      if (!existingAisles.some(a => a.name.toLowerCase() === aisle.toLowerCase())) {
+        dbManager.addAisle(aisle);
+      }
+
+      // Ensure category exists
+      const existingCategories = dbManager.getCategories();
+      if (!existingCategories.some(c => c.name.toLowerCase() === category.toLowerCase())) {
+        dbManager.addCategory(category);
+      }
+
+      // Ensure subcategory exists
+      const existingSubcategories = dbManager.getSubcategories();
+      if (!existingSubcategories.some(s => s.name.toLowerCase() === subcategory.toLowerCase())) {
+        dbManager.addSubcategory(subcategory);
+      }
+
+      dbManager.addProduct({
+        name,
+        price,
+        image,
+        category,
+        aisle,
+        subcategory,
+        optionsTitle: "",
+        options: [],
+        oferta,
+        depositoEnabled: false,
+        depositoAmount: 0,
+        position: dbManager.getProducts().length,
+        publishedSocial: true,
+        hidden: false,
+        transferenciaEnabled: false,
+        transferenciaAmount: 0,
+      });
+      count++;
+    }
+
+    res.json({ ok: true, importedCount: count });
+  } catch (err: any) {
+    console.error("Excel import error:", err);
+    res.status(500).json({ error: "Error al procesar el archivo Excel: " + err.message });
+  }
 });
 
 apiRouter.post("/products/reorder", (req, res) => {

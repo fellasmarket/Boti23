@@ -104,6 +104,7 @@ import {
   Users,
   Loader2,
   ShoppingBag,
+  FileSpreadsheet,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -1104,6 +1105,70 @@ export default function Storefront() {
   const cancelEditing = () => {
     setEditingProduct(null);
     setFormState(DEFAULT_FORM);
+  };
+
+  const handleDownloadTemplate = () => {
+    window.open(`${import.meta.env.BASE_URL}api/admin/download-template`, "_blank");
+  };
+
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      showToast("Procesando planilla Excel e importando...");
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const buffer = event.target?.result as ArrayBuffer;
+        if (!buffer) return;
+        let binary = "";
+        const bytes = new Uint8Array(buffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const base64 = btoa(binary);
+
+        const res = await fetch(`${import.meta.env.BASE_URL}api/admin/import-excel`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ base64 }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          showToast(`¡Importados ${data.importedCount} productos con éxito! Pasillos y categorías creados.`);
+          refreshMenu();
+        } else {
+          showToast(data.error || "Error al importar Excel");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } catch (err) {
+      console.error(err);
+      showToast("Error al leer el archivo Excel");
+    } finally {
+      if (e.target) e.target.value = "";
+    }
+  };
+
+  const handleDeleteAllProducts = async () => {
+    if (!window.confirm("¿Estás 100% seguro de ELIMINAR TODOS LOS PRODUCTOS del catálogo? Esta acción no se puede deshacer.")) {
+      return;
+    }
+    try {
+      showToast("Eliminando todos los productos...");
+      const res = await fetch(`${import.meta.env.BASE_URL}api/admin/products/all`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast("Todos los productos han sido eliminados.");
+        refreshMenu();
+      } else {
+        showToast("Error al eliminar productos");
+      }
+    } catch {
+      showToast("Error al eliminar productos");
+    }
   };
 
   const handleLogin = async () => {
@@ -3744,18 +3809,49 @@ export default function Storefront() {
                   <div className={editingProduct === null ? "lg:col-span-3" : "lg:col-span-5"}>
                     <div className="bg-[#1a1a1a] p-6 rounded-3xl border border-[#ffd025]/20">
                       <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h2 className="text-xl font-black uppercase">
                             Catálogo Actual ({products.length})
                           </h2>
                           <button
                             type="button"
                             onClick={() => downloadProductsExcel(products)}
-                            title="Descargar catálogo en Excel"
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700/20 border border-green-600/30 text-green-400 rounded-xl text-xs font-bold hover:bg-green-700/35 hover:border-green-500/50 transition-colors"
+                            title="Descargar catálogo actual en Excel"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700/20 border border-green-600/30 text-green-400 rounded-xl text-xs font-bold hover:bg-green-700/35 transition-colors"
                           >
                             <Download size={13} />
-                            Excel
+                            Exportar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleDownloadTemplate}
+                            title="Descargar plantilla Excel vacía con formato"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-xl text-xs font-bold hover:bg-amber-500/30 transition-colors"
+                          >
+                            <FileSpreadsheet size={13} />
+                            Plantilla
+                          </button>
+                          <label
+                            title="Subir planilla Excel para importar productos, pasillos y categorías"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded-xl text-xs font-bold hover:bg-blue-600/30 transition-colors cursor-pointer"
+                          >
+                            <Upload size={13} />
+                            Subir Excel
+                            <input
+                              type="file"
+                              accept=".xlsx, .xls, .csv"
+                              className="hidden"
+                              onChange={handleImportExcel}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={handleDeleteAllProducts}
+                            title="Eliminar todos los productos"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600/20 border border-red-500/30 text-red-400 rounded-xl text-xs font-bold hover:bg-red-600/30 transition-colors"
+                          >
+                            <Trash2 size={13} />
+                            Borrar Todo
                           </button>
                         </div>
                         <div className="relative flex-1 min-w-[180px] max-w-xs">

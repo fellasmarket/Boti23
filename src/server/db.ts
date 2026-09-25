@@ -879,6 +879,11 @@ class DatabaseManager {
     return false;
   }
 
+  public deleteAllProducts() {
+    this.db.products = [];
+    this.save();
+  }
+
   public reorderProducts(ids: number[]) {
     ids.forEach((id, idx) => {
       const prod = this.db.products.find(p => p.id === id);
