@@ -296,21 +296,32 @@ apiRouter.post("/admin/import-excel", (req, res) => {
     let count = 0;
     for (const row of rows) {
       const keys = Object.keys(row);
+      const normalize = (s: string) => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+
       const findKey = (candidates: string[]) => {
-        const found = keys.find(k => candidates.includes(k.toLowerCase().trim()));
-        return found ? row[found] : undefined;
+        for (const c of candidates) {
+          const nc = normalize(c);
+          for (const k of keys) {
+            const nk = normalize(k);
+            if (nk === nc || nk.includes(nc) || nc.includes(nk)) {
+              return row[k];
+            }
+          }
+        }
+        return undefined;
       };
 
-      const name = String(findKey(["nombre", "nombre del producto", "producto", "titulo", "name", "product"]) || "").trim();
+      const name = String(findKey(["nombre", "producto", "titulo", "name", "product", "articulo", "artículo"]) || "").trim();
       if (!name) continue;
 
-      const price = Number(findKey(["precio", "valor", "price"]) || 0);
-      const aisle = String(findKey(["pasillo", "seccion", "aisle"]) || "General").trim();
-      const category = String(findKey(["categoria", "categoría", "category"]) || "General").trim();
-      const subcategory = String(findKey(["subcategoria", "subcategoría", "sub-categoria", "subcategory"]) || "General").trim();
-      const image = String(findKey(["imagen", "foto", "image", "url"]) || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=600&auto=format&fit=crop&q=80").trim();
-      const ofertaRaw = findKey(["oferta", "en oferta", "oferta?"]);
-      const oferta = ofertaRaw === true || String(ofertaRaw).toLowerCase() === 'si' || String(ofertaRaw).toLowerCase() === 'true' || String(ofertaRaw) === '1';
+      const description = String(findKey(["descripcion", "descripccion", "detalles", "det", "desc", "description"]) || "").trim();
+      const price = Number(findKey(["precio", "valor", "costo", "price", "$"]) || 0);
+      const aisle = String(findKey(["pasillo", "seccion", "sección", "zona", "aisle", "departamento"]) || "General").trim();
+      const category = String(findKey(["categoria", "categoría", "category", "familia"]) || "General").trim();
+      const subcategory = String(findKey(["subcategoria", "subcategoría", "sub-categoria", "subcategory", "subfamilia"]) || "General").trim();
+      const image = String(findKey(["imagen", "foto", "image", "url", "img", "fotografia"]) || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=600&auto=format&fit=crop&q=80").trim();
+      const ofertaRaw = findKey(["oferta", "en oferta", "oferta?", "promo", "promocion"]);
+      const oferta = ofertaRaw === true || String(ofertaRaw).toLowerCase() === 'si' || String(ofertaRaw).toLowerCase() === 'true' || String(ofertaRaw) === '1' || String(ofertaRaw).toLowerCase() === 'sí';
 
       // Ensure aisle exists
       const existingAisles = dbManager.getAisles();
@@ -332,6 +343,7 @@ apiRouter.post("/admin/import-excel", (req, res) => {
 
       dbManager.addProduct({
         name,
+        description,
         price,
         image,
         category,
