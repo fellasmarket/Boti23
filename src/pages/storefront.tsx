@@ -55,6 +55,7 @@ declare module "@workspace/api-client-react" {
     contingencyMode?: boolean;
     contingencyMessage?: string;
     promoBannerImage?: string;
+    aislesBannerImage?: string;
   }
   interface Product {
     contingencyEnabled?: boolean;
@@ -1823,7 +1824,7 @@ export default function Storefront() {
       )}
 
       {view === "client" && (
-        <header className="sticky top-0 z-40 bg-black text-white shadow-2xl select-none">
+        <header className="fixed top-0 left-0 right-0 z-50 bg-black text-white shadow-2xl select-none">
           {/* BARRA SUPERIOR (1/6): Degradado naranja-coral ultra delgado con tipografía equilibrada */}
           <div
             onClick={() => setShowComunasModal(true)}
@@ -2349,7 +2350,7 @@ export default function Storefront() {
       )}
 
       {view === "client" && (
-        <>
+        <div className="pt-[76px] sm:pt-[84px]">
         {/* Business hours banner — shown only when store is outside operating hours */}
         {!isStoreOpen && (
           <div className="bg-[#1a0f00] border-b border-amber-600/40 px-4 py-3">
@@ -2474,101 +2475,235 @@ export default function Storefront() {
             </div>
           )}
 
-          {/* SECCIÓN DIRECTA: LAS PROMOS DEL TÍO FELLAS (BANNER DE IMAGEN SIN TEXTO, PUNTAS CUADRADAS, 3 EN CELULAR, 4 EN PC) */}
-          <section className="max-w-6xl mx-auto px-3 sm:px-4 mt-3 sm:mt-6">
-            {/* Banner de imagen sin texto con puntas cuadradas y altura reducida a la mitad en celular (h-12) */}
-            <div className="w-full h-12 sm:h-28 md:h-44 overflow-hidden rounded-none border border-white/10 mb-3 sm:mb-4 bg-black select-none">
-              <img
-                src={settings.promoBannerImage || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=1600&auto=format&fit=crop&q=80"}
-                alt="Promociones Fellas"
-                loading="lazy"
-                decoding="async"
-                className="w-full h-full object-cover rounded-none"
-              />
-            </div>
+          {/* ESTADO DE FILTRO ACTIVO (CAMBIO DE PASILLO / CATEGORÍA DESDE EL ENCABEZADO) */}
+          {(() => {
+            const isFiltered = Boolean(activeAisle || activeCategory || navQuickFilter);
 
-            {/* Productos desenmarcados, perfectamente alineados en altura y separados por líneas divisorias */}
-            <div className="grid grid-cols-3 md:grid-cols-4 divide-x divide-white/10 items-stretch">
-              {promoProducts.map((product, idx) => (
-                <div
-                  key={product.id}
-                  className={`group flex flex-col justify-between h-full px-2 sm:px-3 md:px-3.5 ${
-                    idx >= 3 ? "hidden md:flex" : "flex"
-                  }`}
-                >
-                  <div>
-                    {/* Imagen de Producto Recta 1:1 (Sin puntas redondeadas) */}
-                    <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-2">
-                      {product.image ? (
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          loading="lazy"
-                          decoding="async"
-                          className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src =
-                              "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
-                          }}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-none">
-                          <Package size={20} className="text-[#ffd025]/70" />
-                          <span className="text-[8px] sm:text-[10px] mt-0.5 font-semibold uppercase">Fellas</span>
-                        </div>
-                      )}
-
-                      {/* Badge Promo Recto */}
-                      <div className="absolute top-1 left-1 z-10">
-                        <span className="px-1.5 py-0.5 bg-[#ffd025] text-black text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
-                          PROMO
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Categoría con altura fija para alineación exacta */}
-                    <div className="h-4 flex items-center mb-0.5 overflow-hidden">
-                      {product.category ? (
-                        <span className="text-[8.5px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400 truncate block">
-                          {product.category}
-                        </span>
-                      ) : (
-                        <span className="text-[8.5px] sm:text-[10px] font-bold uppercase tracking-wider text-transparent select-none">
-                          -
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Nombre con altura fija de 2 líneas para que no desplace el precio */}
-                    <h4 className="text-[10px] xs:text-[11px] sm:text-xs md:text-[13px] font-bold text-white leading-tight line-clamp-2 h-7 sm:h-8 md:h-9 flex items-start group-hover:text-[#ffd025] transition-colors">
-                      {product.name}
-                    </h4>
-                  </div>
-
-                  {/* Precio y Botón de Agregar alineados en la misma base inferior */}
-                  <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1">
-                    <span className="text-[11px] sm:text-xs md:text-sm font-black text-[#ffd025] truncate">
-                      ${Number(product.price || 0).toLocaleString("es-CL")}
-                    </span>
-
-                    <button
-                      onClick={() => handleAddToCartClick(product)}
-                      disabled={!isStoreOpen}
-                      className="h-6 px-1.5 sm:px-2.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 rounded-none hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                      title="Añadir al carrito"
-                      aria-label="Añadir al carrito"
-                    >
-                      <Plus size={12} strokeWidth={2.5} />
-                      <span className="hidden sm:inline text-[10px]">Añadir</span>
-                    </button>
-                  </div>
+            const recommendedSection = (
+              <>
+                <div className={`max-w-6xl mx-auto px-3 sm:px-4 ${isFiltered ? "mt-6 sm:mt-8 mb-4 sm:mb-6" : "mt-2 sm:mt-3 mb-1.5 sm:mb-2"} flex items-center gap-3`}>
+                  <div className="flex-1 border-t border-white/20"></div>
+                  <span className="text-[10px] sm:text-xs md:text-sm font-black tracking-widest text-[#ffd025] uppercase shrink-0">
+                    #NUESTROSRECOMENDADOS
+                  </span>
+                  <div className="flex-1 border-t border-white/20"></div>
                 </div>
-              ))}
-            </div>
 
-            {/* Línea divisoria de fin de sección */}
-            <div className="w-full border-b border-white/15 mt-6" />
-          </section>
+                <section className={`max-w-6xl mx-auto px-3 sm:px-4 ${isFiltered ? "mt-2 sm:mt-4" : "mt-1.5 sm:mt-3"}`}>
+                  <div className="w-full h-12 sm:h-28 md:h-44 overflow-hidden rounded-none border border-white/10 mb-3 sm:mb-4 bg-black select-none">
+                    <img
+                      src={settings.promoBannerImage || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=1600&auto=format&fit=crop&q=80"}
+                      alt="Promociones Fellas"
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover rounded-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 md:grid-cols-4 gap-1.5 xs:gap-2 sm:gap-3 md:gap-3.5 items-stretch w-full">
+                    {promoProducts.map((product, idx) => (
+                      <div
+                        key={product.id}
+                        className={`group flex flex-col justify-between h-full w-full ${
+                          idx >= 3 ? "hidden md:flex" : "flex"
+                        }`}
+                      >
+                        <div>
+                          <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1.5 sm:mb-2">
+                            {product.image ? (
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                loading="lazy"
+                                decoding="async"
+                                className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).src =
+                                    "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-none">
+                                <Package size={20} className="text-[#ffd025]/70" />
+                                <span className="text-[8px] sm:text-[10px] mt-0.5 font-semibold uppercase">Fellas</span>
+                              </div>
+                            )}
+
+                            <div className="absolute top-1 left-1 z-10">
+                              <span className="px-1.5 py-0.5 bg-[#ffd025] text-black text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
+                                PROMO
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="h-3.5 sm:h-4 flex items-center mb-0.5 overflow-hidden">
+                            {(product.aisle || product.category) ? (
+                              <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
+                                {product.aisle || product.category}
+                              </span>
+                            ) : (
+                              <span className="text-[7.5px] sm:text-[9px] font-medium uppercase tracking-wider text-transparent select-none">
+                                -
+                              </span>
+                            )}
+                          </div>
+
+                          <h4
+                            title={product.name}
+                            className="text-[9.5px] xs:text-[10px] sm:text-[11.5px] md:text-[12px] font-semibold text-white leading-tight line-clamp-2 h-7 sm:h-8 md:h-8.5 block w-full group-hover:text-[#ffd025] transition-colors"
+                          >
+                            {product.name}
+                          </h4>
+                        </div>
+
+                        <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1">
+                          <span className="text-[11px] sm:text-xs md:text-sm font-black text-[#ffd025] truncate">
+                            ${Number(product.price || 0).toLocaleString("es-CL")}
+                          </span>
+
+                          <button
+                            onClick={() => handleAddToCartClick(product)}
+                            disabled={!isStoreOpen}
+                            className="h-6 px-1.5 sm:px-2.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 rounded-none hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                            title="Añadir al carrito"
+                            aria-label="Añadir al carrito"
+                          >
+                            <Plus size={12} strokeWidth={2.5} />
+                            <span className="hidden sm:inline text-[10px]">Añadir</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </>
+            );
+
+            const collectionsSection = (
+              <>
+                <div className={`max-w-6xl mx-auto px-3 sm:px-4 ${isFiltered ? "mt-2 sm:mt-3 mb-1.5 sm:mb-2" : "mt-6 sm:mt-8 mb-4 sm:mb-6"} flex items-center gap-3`}>
+                  <div className="flex-1 border-t border-white/20"></div>
+                  <span className="text-[10px] sm:text-xs md:text-sm font-black tracking-widest text-[#ffd025] uppercase shrink-0">
+                    #NUESTRASCOLECCIONES
+                  </span>
+                  <div className="flex-1 border-t border-white/20"></div>
+                </div>
+
+                <section className={`max-w-6xl mx-auto px-3 sm:px-4 ${isFiltered ? "mt-1.5 sm:mt-3" : "mt-2 sm:mt-4"}`}>
+                  <div className="w-full h-12 sm:h-28 md:h-44 overflow-hidden rounded-none border border-white/10 mb-4 sm:mb-6 bg-black select-none">
+                    <img
+                      src={settings.aislesBannerImage || "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=1600&auto=format&fit=crop&q=80"}
+                      alt="Pasillos"
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover rounded-none"
+                    />
+                  </div>
+
+                  <div className="space-y-6 sm:space-y-8">
+                    {activeAisles.map((aisleName) => {
+                      const aisleProducts = groupedByAisle[aisleName] || [];
+                      if (aisleProducts.length === 0) return null;
+
+                      return (
+                        <div key={aisleName} id={`aisle-${aisleName}`} className="scroll-mt-24">
+                          <div className="grid grid-cols-3 md:grid-cols-4 gap-1.5 xs:gap-2 sm:gap-3 md:gap-3.5 items-stretch w-full">
+                            {aisleProducts.map((product) => (
+                              <div
+                                key={product.id}
+                                className="group flex flex-col justify-between h-full w-full"
+                              >
+                                <div>
+                                  <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1.5 sm:mb-2">
+                                    {product.image ? (
+                                      <img
+                                        src={product.image}
+                                        alt={product.name}
+                                        loading="lazy"
+                                        decoding="async"
+                                        className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300"
+                                        onError={(e) => {
+                                          (e.currentTarget as HTMLImageElement).src =
+                                            "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-none">
+                                        <Package size={20} className="text-[#ffd025]/70" />
+                                        <span className="text-[8px] sm:text-[10px] mt-0.5 font-semibold uppercase">Fellas</span>
+                                      </div>
+                                    )}
+
+                                    {product.oferta && (
+                                      <div className="absolute top-1 left-1 z-10">
+                                        <span className="px-1.5 py-0.5 bg-[#ffd025] text-black text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
+                                          OFERTA
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="h-3.5 sm:h-4 flex items-center mb-0.5 overflow-hidden">
+                                    {(product.subcategory || product.category || product.aisle) ? (
+                                      <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
+                                        {product.subcategory || product.category || product.aisle}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[7.5px] sm:text-[9px] font-medium uppercase tracking-wider text-transparent select-none">
+                                        -
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <h4
+                                    title={product.name}
+                                    className="text-[9.5px] xs:text-[10px] sm:text-[11.5px] md:text-[12px] font-semibold text-white leading-tight line-clamp-2 h-7 sm:h-8 md:h-8.5 block w-full group-hover:text-[#ffd025] transition-colors"
+                                  >
+                                    {product.name}
+                                  </h4>
+                                </div>
+
+                                <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1">
+                                  <span className="text-[11px] sm:text-xs md:text-sm font-black text-[#ffd025] truncate">
+                                    ${Number(product.price || 0).toLocaleString("es-CL")}
+                                  </span>
+
+                                  <button
+                                    onClick={() => handleAddToCartClick(product)}
+                                    disabled={!isStoreOpen}
+                                    className="h-6 px-1.5 sm:px-2.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 rounded-none hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                                    title="Añadir al carrito"
+                                    aria-label="Añadir al carrito"
+                                  >
+                                    <Plus size={12} strokeWidth={2.5} />
+                                    <span className="hidden sm:inline text-[10px]">Añadir</span>
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="w-full border-b border-white/10 mt-6 sm:mt-8" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              </>
+            );
+
+            return isFiltered ? (
+              <>
+                {collectionsSection}
+                {recommendedSection}
+              </>
+            ) : (
+              <>
+                {recommendedSection}
+                {collectionsSection}
+              </>
+            );
+          })()}
 
           {(settings.contactPhone || settings.contactAddress || settings.contactHours) && (
             <div className="mt-10 pt-5 border-t border-white/10 px-4">
@@ -2608,7 +2743,7 @@ export default function Storefront() {
             )}
           </footer>
         </main>
-        </>
+        </div>
       )}
 
       {checkoutOpen && (
