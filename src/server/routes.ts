@@ -237,8 +237,21 @@ apiRouter.post("/products", (req, res) => {
     hidden: Boolean(body.hidden),
     transferenciaEnabled: Boolean(body.transferenciaEnabled),
     transferenciaAmount: Number(body.transferenciaAmount) || 0,
+    contingencyEnabled: Boolean(body.contingencyEnabled),
   });
   res.status(201).json(created);
+});
+
+apiRouter.post("/admin/products/contingency-batch", (req, res) => {
+  const { ids = [], enable = true } = req.body;
+  const idsSet = new Set((ids as number[]).map(Number));
+  const products = dbManager.getProducts();
+  for (const p of products) {
+    if (idsSet.has(p.id)) {
+      dbManager.updateProduct(p.id, { contingencyEnabled: Boolean(enable) });
+    }
+  }
+  res.json({ ok: true });
 });
 
 apiRouter.patch("/products/:id", (req, res) => {

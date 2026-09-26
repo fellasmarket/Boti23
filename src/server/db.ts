@@ -32,6 +32,8 @@ export interface Setting {
   openTime: string;
   closeTime: string;
   deliveryMinimum: number;
+  contingencyMode?: boolean;
+  contingencyMessage?: string;
 }
 
 export interface Category {
@@ -75,6 +77,7 @@ export interface Product {
   hidden: boolean;
   transferenciaEnabled: boolean;
   transferenciaAmount: number;
+  contingencyEnabled?: boolean;
 }
 
 export interface OrderItem {
@@ -167,7 +170,7 @@ export interface DatabaseSchema {
 const DEFAULT_DB: DatabaseSchema = {
   settings: {
     logo: "",
-    pageTitle: "Fella's Market — Botillería en Alerce, Puerto Montt",
+    pageTitle: "FELLAS",
     favicon: "/favicon.svg",
     bannerText: "🍻 ¡BIENVENIDO A FELLA'S MARKET ALERCE! 🍾",
     bannerDescription: "Tu botillería y minimarket de confianza. Cervezas heladas, destilados, vinos, snacks y delivery rápido a todo Alerce y Puerto Montt.",
@@ -203,6 +206,8 @@ const DEFAULT_DB: DatabaseSchema = {
     openTime: "00:00",
     closeTime: "23:59",
     deliveryMinimum: 5000,
+    contingencyMode: false,
+    contingencyMessage: "🚨 MODO CONTINGENCIA: Por alta demanda o motivos de fuerza mayor, la recepción de pedidos web se encuentra pausada temporalmente. Por favor consulta por WhatsApp.",
   },
   categories: [
     { id: 1, name: "Cervezas", position: 0 },
