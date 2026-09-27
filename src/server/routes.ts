@@ -18,6 +18,20 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 
 export const apiRouter = express.Router();
 
+// Health check & Keep-alive endpoint
+apiRouter.get("/health", (_req, res) => {
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    keepAlive: true,
+  });
+});
+
+apiRouter.get("/ping", (_req, res) => {
+  res.json({ pong: true, timestamp: Date.now() });
+});
+
 // In-memory cache for ip -> geo
 const ipGeoCache = new Map<string, { city: string; region: string; country: string }>();
 
@@ -124,6 +138,16 @@ apiRouter.get("/settings", (_req, res) => {
 apiRouter.patch("/settings", (req, res) => {
   const updated = dbManager.updateSettings(req.body);
   res.json(updated);
+});
+
+// Google Maps Reviews API
+apiRouter.get("/google-maps-reviews", (_req, res) => {
+  const settings = dbManager.getSettings();
+  res.json({
+    rating: settings.googleMapsRating || 4.9,
+    reviewsCount: settings.googleMapsReviewsCount || 142,
+    reviews: settings.googleMapsReviews || []
+  });
 });
 
 // 4. Categories

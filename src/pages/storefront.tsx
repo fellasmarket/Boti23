@@ -52,10 +52,30 @@ import { generateStatsPDF } from "../lib/statsPdf";
 
 declare module "@workspace/api-client-react" {
   interface Settings {
+    topAnnouncementText?: string;
     contingencyMode?: boolean;
     contingencyMessage?: string;
     promoBannerImage?: string;
     aislesBannerImage?: string;
+    homeCollectionProductIds?: number[];
+    recommendedProductIds?: number[];
+    footerLogo?: string;
+    footerDescription?: string;
+    socialInstagram?: string;
+    socialFacebook?: string;
+    socialTiktok?: string;
+    socialWhatsapp?: string;
+    googleMapsPlaceId?: string;
+    googleMapsRating?: number;
+    googleMapsReviewsCount?: number;
+    googleMapsReviews?: Array<{
+      id: string;
+      author_name: string;
+      author_photo?: string;
+      rating: number;
+      relative_time_description: string;
+      text: string;
+    }>;
   }
   interface Product {
     contingencyEnabled?: boolean;
@@ -96,6 +116,9 @@ import {
   ChevronRight,
   Download,
   Instagram,
+  Facebook,
+  MessageCircle,
+  Video,
   ArrowUp,
   ArrowDown,
   ChevronUp,
@@ -126,6 +149,8 @@ import {
   Filter,
   LayoutGrid,
   ChevronLeft,
+  ArrowLeft,
+  Star,
   LogIn,
 } from "lucide-react";
 import * as XLSX from "xlsx";
@@ -396,6 +421,66 @@ export default function Storefront() {
   const reorderSubcategoriesMut = useReorderSubcategories();
   const reorderProductsMut = useReorderProducts();
   const adminLoginMut = useAdminLogin();
+  const [googleMapsData, setGoogleMapsData] = useState<{
+    rating: number;
+    reviewsCount: number;
+    reviews: Array<{
+      id: string;
+      author_name: string;
+      author_photo?: string;
+      rating: number;
+      relative_time_description: string;
+      text: string;
+    }>;
+  }>({
+    rating: 4.9,
+    reviewsCount: 142,
+    reviews: [
+      {
+        id: "g-1",
+        author_name: "Carlos Soto",
+        author_photo: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
+        rating: 5,
+        relative_time_description: "Hace 2 días",
+        text: "¡Excelente atención y las cervezas siempre llegan ultra heladas! El delivery es súper rápido en Alerce. 100% recomendado.",
+      },
+      {
+        id: "g-2",
+        author_name: "Valentina Muñoz",
+        author_photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120",
+        rating: 5,
+        relative_time_description: "Hace una semana",
+        text: "Salvaron nuestra junta de amigos un domingo a medianoche. Tienen de todo y el hielo nunca falta. ¡Geniales!",
+      },
+      {
+        id: "g-3",
+        author_name: "Matías Alarcón",
+        author_photo: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=120",
+        rating: 5,
+        relative_time_description: "Hace 2 semanas",
+        text: "Muy buena variedad de destilados y snacks. Los precios son justos y la página web es súper fácil de usar.",
+      },
+      {
+        id: "g-4",
+        author_name: "Camila Fernández",
+        author_photo: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=120",
+        rating: 5,
+        relative_time_description: "Hace 3 semanas",
+        text: "Pedimos por WhatsApp y la entrega llegó en 20 minutos exacta. Todo muy bien empaquetado y los tragos heladísimos. Se pasaron.",
+      },
+    ],
+  });
+
+  useEffect(() => {
+    fetch("/api/google-maps-reviews")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data) {
+          setGoogleMapsData(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const refreshMenu = () =>
     queryClient.invalidateQueries({ queryKey: getGetMenuQueryKey() });
@@ -452,6 +537,7 @@ export default function Storefront() {
   const [showComunasModal, setShowComunasModal] = useState(false);
   const [selectedComuna, setSelectedComuna] = useState("Santiago");
   const [activeAnnouncementIdx, setActiveAnnouncementIdx] = useState(0);
+  const [showDedicatedProductsPage, setShowDedicatedProductsPage] = useState(false);
 
   const headerAnnouncements = useMemo(() => {
     if (settings.announcements && Array.isArray(settings.announcements) && settings.announcements.length > 0) {
@@ -512,6 +598,17 @@ export default function Storefront() {
   const [authLoading, setAuthLoading] = useState(false);
 
   const trackVisitMut = useTrackVisit();
+
+  // Keep-alive ping para mantener el servidor activo en planes gratuitos (Render / Railway / Fly)
+  useEffect(() => {
+    const pingServer = () => {
+      fetch("/api/ping").catch(() => {});
+    };
+    pingServer();
+    const interval = setInterval(pingServer, 4 * 60 * 1000); // cada 4 minutos
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     try {
       const today = new Date().toISOString().slice(0, 10);
@@ -572,17 +669,20 @@ export default function Storefront() {
 
   // Admin Progressive Disclosure & Guided Steps State
   const [settingsSubTab, setSettingsSubTab] = useState<
-    "all" | "brand" | "ticker" | "banners" | "delivery" | "hours" | "contingency" | "contact"
+    "all" | "brand" | "ticker" | "banners" | "featured" | "delivery" | "hours" | "contingency" | "contact"
   >("all");
   const [openSettingsSections, setOpenSettingsSections] = useState<Record<string, boolean>>({
     brand: true,
     ticker: false,
     banners: false,
+    featured: false,
     delivery: false,
     hours: false,
     contingency: false,
     contact: false,
   });
+  const [featuredRecoSearch, setFeaturedRecoSearch] = useState("");
+  const [featuredCollecSearch, setFeaturedCollecSearch] = useState("");
   const toggleSettingsSection = (sec: string) => {
     setOpenSettingsSections((p) => ({ ...p, [sec]: !p[sec] }));
   };
@@ -734,6 +834,32 @@ export default function Storefront() {
     ];
 
     if (!products || products.length === 0) return samplePromos;
+
+    const customIds = settings.recommendedProductIds ?? [];
+    if (customIds.length > 0) {
+      const selected = customIds
+        .map((id) => products.find((p) => p.id === id && !p.hidden))
+        .filter((p): p is Product => Boolean(p));
+      if (selected.length >= 4) return selected.slice(0, 4);
+
+      const otherCandidates = products.filter(
+        (p) =>
+          !p.hidden &&
+          !selected.some((s) => s.id === p.id) &&
+          (p.oferta ||
+            p.bestseller ||
+            p.category?.toLowerCase().includes("pack") ||
+            p.category?.toLowerCase().includes("promo") ||
+            p.name?.toLowerCase().includes("pack") ||
+            p.name?.toLowerCase().includes("promo") ||
+            Boolean(p.image))
+      );
+      const combined = [...selected, ...otherCandidates];
+      if (combined.length >= 4) return combined.slice(0, 4);
+      const regular = products.filter((p) => !p.hidden && !combined.some((c) => c.id === p.id));
+      return [...combined, ...regular, ...samplePromos].slice(0, 4);
+    }
+
     const candidates = products.filter(
       (p) =>
         !p.hidden &&
@@ -750,7 +876,7 @@ export default function Storefront() {
     const combined = [...candidates, ...regular];
     if (combined.length >= 4) return combined.slice(0, 4);
     return [...combined, ...samplePromos].slice(0, 4);
-  }, [products]);
+  }, [products, settings.recommendedProductIds]);
 
   const allMenuSections = useMemo(() => {
     const list: Array<{ name: string; type: "category" | "aisle" }> = [];
@@ -800,6 +926,21 @@ export default function Storefront() {
     }
     return baseProducts;
   }, [baseProducts, activeCategory, activeAisle, debouncedSearch, categories, aisles, navQuickFilter]);
+
+  const homeCollectionProducts = useMemo(() => {
+    const customIds = settings.homeCollectionProductIds ?? [];
+    if (customIds.length > 0) {
+      const selected = customIds
+        .map((id) => baseProducts.find((p) => p.id === id && !p.hidden))
+        .filter((p): p is Product => Boolean(p));
+      if (selected.length >= 6) return selected.slice(0, 6);
+      const remainder = filteredProducts.filter(
+        (p) => !p.hidden && !selected.some((s) => s.id === p.id)
+      );
+      return [...selected, ...remainder].slice(0, 6);
+    }
+    return filteredProducts.slice(0, 6);
+  }, [baseProducts, filteredProducts, settings.homeCollectionProductIds]);
 
   const groupedByAisle = useMemo(
     () =>
@@ -1828,13 +1969,13 @@ export default function Storefront() {
           {/* BARRA SUPERIOR (1/6): Degradado naranja-coral ultra delgado con tipografía equilibrada */}
           <div
             onClick={() => setShowComunasModal(true)}
-            className="w-full text-white py-[2px] px-2 sm:px-4 text-center cursor-pointer select-none transition-opacity hover:opacity-95 overflow-hidden flex items-center justify-center leading-none"
+            className="w-full text-white py-[2.5px] px-2 sm:px-4 text-center cursor-pointer select-none transition-opacity hover:opacity-95 overflow-hidden flex items-center justify-center leading-none"
             style={{
               background: "linear-gradient(90deg, #f7a627 0%, #fa7a34 50%, #f44369 100%)",
             }}
           >
             <span className="font-bold uppercase whitespace-nowrap tracking-wide text-[8.5px] min-[360px]:text-[9.5px] min-[410px]:text-[10px] sm:text-[11px] leading-tight text-white">
-              PIDE ANTES DE LAS 8:00 AM Y RECIBE EL MISMO DÍA (VER COMUNAS)
+              {settings.topAnnouncementText?.trim() || "PIDE ANTES DE LAS 8:00 AM Y RECIBE EL MISMO DÍA (VER COMUNAS)"}
             </span>
           </div>
 
@@ -1852,6 +1993,7 @@ export default function Storefront() {
                     setActiveCategory("");
                     setActiveAisle("");
                     setNavQuickFilter("");
+                    setShowDedicatedProductsPage(false);
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
                   title="Ir al inicio"
@@ -2351,8 +2493,18 @@ export default function Storefront() {
 
       {view === "client" && (
         <div className="pt-[76px] sm:pt-[84px]">
-        {/* Business hours banner — shown only when store is outside operating hours */}
-        {!isStoreOpen && (
+        {/* Contingency or Business hours banner */}
+        {settings.contingencyMode ? (
+          <div className="bg-[#2a0808] border-b border-red-600/50 px-4 py-3">
+            <div className="max-w-6xl mx-auto flex items-start gap-3">
+              <span className="text-red-400 text-base leading-none mt-0.5 flex-shrink-0">🚨</span>
+              <p className="text-[13px] text-red-200 leading-snug">
+                <span className="font-bold">MODO CONTINGENCIA ACTIVO:</span>{" "}
+                {settings.contingencyMessage || "La tienda se encuentra operando con catálogo reducido de contingencia temporalmente."}
+              </p>
+            </div>
+          </div>
+        ) : !isStoreOpen && (
           <div className="bg-[#1a0f00] border-b border-amber-600/40 px-4 py-3">
             <div className="max-w-6xl mx-auto flex items-start gap-3">
               <span className="text-amber-400 text-base leading-none mt-0.5 flex-shrink-0">🕐</span>
@@ -2364,7 +2516,7 @@ export default function Storefront() {
             </div>
           </div>
         )}
-        <main className="pb-24 relative">
+        <main className="relative">
           {optionModalInfo && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <div
@@ -2431,184 +2583,428 @@ export default function Storefront() {
             </div>
           )}
 
-          {/* BANNER PRINCIPAL */}
-          {!searchQuery && effectiveSlides.length > 0 && (
-            <div className="max-w-6xl mx-auto px-3 sm:px-4 mt-3 sm:mt-6">
-              <div
-                className="relative w-full h-32 sm:h-48 md:h-80 shadow-lg border border-white/10 bg-black select-none rounded-xl sm:rounded-2xl overflow-hidden"
-                style={{ transform: "translateZ(0)", WebkitMaskImage: "-webkit-radial-gradient(white, black)" }}
-              >
-                {effectiveSlides.map((slide, i) => (
-                  <div
-                    key={i}
-                    className="absolute inset-0 transition-opacity duration-700"
-                    style={{ opacity: i === activeSlide ? 1 : 0, zIndex: i === activeSlide ? 2 : 1 }}
-                  >
-                    {slide.image && (
-                      <img
-                        loading={i === 0 ? "eager" : "lazy"}
-                        decoding="async"
-                        fetchPriority={i === 0 ? "high" : "auto"}
-                        src={slide.image}
-                        alt="Banner"
-                        className="w-full h-full object-cover"
-                      />
-                    )}
-                  </div>
-                ))}
-                {effectiveSlides.length > 1 && (
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
-                    {effectiveSlides.map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setActiveSlide(i)}
-                        className={`rounded-full transition-all duration-300 ${
-                          i === activeSlide
-                            ? "w-5 h-2 bg-[#ffd025]"
-                            : "w-2 h-2 bg-white/40 hover:bg-white/70"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ESTADO DE FILTRO ACTIVO (CAMBIO DE PASILLO / CATEGORÍA DESDE EL ENCABEZADO) */}
-          {(() => {
-            const isFiltered = Boolean(activeAisle || activeCategory || navQuickFilter);
-
-            const recommendedSection = (
-              <>
-                <div className={`max-w-6xl mx-auto px-3 sm:px-4 ${isFiltered ? "mt-6 sm:mt-8 mb-4 sm:mb-6" : "mt-2 sm:mt-3 mb-1.5 sm:mb-2"} flex items-center gap-3`}>
-                  <div className="flex-1 border-t border-white/20"></div>
-                  <span className="text-[10px] sm:text-xs md:text-sm font-black tracking-widest text-[#ffd025] uppercase shrink-0">
-                    #NUESTROSRECOMENDADOS
-                  </span>
-                  <div className="flex-1 border-t border-white/20"></div>
+          {/* RENDERIZADO CONDICIONAL: PESTAÑA DEDICADA DE PRODUCTOS vs VISTA PRINCIPAL HOME */}
+          {showDedicatedProductsPage && !settings.contingencyMode ? (
+            <div className="animate-fade-in pb-4">
+              {/* Banner de Pasillo y Selector de Pasillos (Texto Puro, Sin Rectángulos) */}
+              <div className="max-w-6xl mx-auto px-3 sm:px-4 mt-3 sm:mt-5">
+                <div className="w-full h-14 sm:h-28 md:h-44 overflow-hidden rounded-none border border-white/10 mb-3 bg-black select-none">
+                  <img
+                    src={settings.aislesBannerImage || "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=1600&auto=format&fit=crop&q=80"}
+                    alt="Pasillos"
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-cover rounded-none"
+                  />
                 </div>
 
-                <section className={`max-w-6xl mx-auto px-3 sm:px-4 ${isFiltered ? "mt-2 sm:mt-4" : "mt-1.5 sm:mt-3"}`}>
-                  <div className="w-full h-12 sm:h-28 md:h-44 overflow-hidden rounded-none border border-white/10 mb-3 sm:mb-4 bg-black select-none">
-                    <img
-                      src={settings.promoBannerImage || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=1600&auto=format&fit=crop&q=80"}
-                      alt="Promociones Fellas"
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full h-full object-cover rounded-none"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-3 md:grid-cols-4 gap-1.5 xs:gap-2 sm:gap-3 md:gap-3.5 items-stretch w-full">
-                    {promoProducts.map((product, idx) => (
-                      <div
-                        key={product.id}
-                        className={`group flex flex-col justify-between h-full w-full ${
-                          idx >= 3 ? "hidden md:flex" : "flex"
+                {/* Menú de Pasillos en Texto Suelto (Sin Cajas ni Rectángulos, Solo Color al Seleccionar) */}
+                <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar scrollbar-none py-2 mb-6 border-b border-white/10">
+                  <button
+                    onClick={() => {
+                      setActiveAisle("");
+                      setActiveCategory("");
+                    }}
+                    className={`text-xs sm:text-sm uppercase tracking-wider whitespace-nowrap transition-colors bg-transparent border-0 p-0 cursor-pointer ${
+                      !activeAisle && !activeCategory
+                        ? "text-[#ffd025] font-black"
+                        : "text-gray-400 hover:text-white font-medium"
+                    }`}
+                  >
+                    Todos
+                  </button>
+                  {(aisles.length > 0 ? aisles : categories).map((item) => {
+                    const isSel = activeAisle === item || activeCategory === item;
+                    return (
+                      <button
+                        key={item}
+                        onClick={() => {
+                          if (aisles.includes(item)) {
+                            setActiveCategory("");
+                            setActiveAisle(item);
+                          } else {
+                            setActiveAisle("");
+                            setActiveCategory(item);
+                          }
+                        }}
+                        className={`text-xs sm:text-sm uppercase tracking-wider whitespace-nowrap transition-colors bg-transparent border-0 p-0 cursor-pointer ${
+                          isSel
+                            ? "text-[#ffd025] font-black"
+                            : "text-gray-400 hover:text-white font-medium"
                         }`}
                       >
-                        <div>
-                          <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1.5 sm:mb-2">
-                            {product.image ? (
-                              <img
-                                src={product.image}
-                                alt={product.name}
-                                loading="lazy"
-                                decoding="async"
-                                className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300"
-                                onError={(e) => {
-                                  (e.currentTarget as HTMLImageElement).src =
-                                    "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
-                                }}
-                              />
-                            ) : (
-                              <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-none">
-                                <Package size={20} className="text-[#ffd025]/70" />
-                                <span className="text-[8px] sm:text-[10px] mt-0.5 font-semibold uppercase">Fellas</span>
-                              </div>
-                            )}
-
-                            <div className="absolute top-1 left-1 z-10">
-                              <span className="px-1.5 py-0.5 bg-[#ffd025] text-black text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
-                                PROMO
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="h-3.5 sm:h-4 flex items-center mb-0.5 overflow-hidden">
-                            {(product.aisle || product.category) ? (
-                              <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
-                                {product.aisle || product.category}
-                              </span>
-                            ) : (
-                              <span className="text-[7.5px] sm:text-[9px] font-medium uppercase tracking-wider text-transparent select-none">
-                                -
-                              </span>
-                            )}
-                          </div>
-
-                          <h4
-                            title={product.name}
-                            className="text-[9.5px] xs:text-[10px] sm:text-[11.5px] md:text-[12px] font-semibold text-white leading-tight line-clamp-2 h-7 sm:h-8 md:h-8.5 block w-full group-hover:text-[#ffd025] transition-colors"
-                          >
-                            {product.name}
-                          </h4>
-                        </div>
-
-                        <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1">
-                          <span className="text-[11px] sm:text-xs md:text-sm font-black text-[#ffd025] truncate">
-                            ${Number(product.price || 0).toLocaleString("es-CL")}
-                          </span>
-
-                          <button
-                            onClick={() => handleAddToCartClick(product)}
-                            disabled={!isStoreOpen}
-                            className="h-6 px-1.5 sm:px-2.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 rounded-none hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                            title="Añadir al carrito"
-                            aria-label="Añadir al carrito"
-                          >
-                            <Plus size={12} strokeWidth={2.5} />
-                            <span className="hidden sm:inline text-[10px]">Añadir</span>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              </>
-            );
-
-            const collectionsSection = (
-              <>
-                <div className={`max-w-6xl mx-auto px-3 sm:px-4 ${isFiltered ? "mt-2 sm:mt-3 mb-1.5 sm:mb-2" : "mt-6 sm:mt-8 mb-4 sm:mb-6"} flex items-center gap-3`}>
-                  <div className="flex-1 border-t border-white/20"></div>
-                  <span className="text-[10px] sm:text-xs md:text-sm font-black tracking-widest text-[#ffd025] uppercase shrink-0">
-                    #NUESTRASCOLECCIONES
-                  </span>
-                  <div className="flex-1 border-t border-white/20"></div>
+                        {item}
+                      </button>
+                    );
+                  })}
                 </div>
 
-                <section className={`max-w-6xl mx-auto px-3 sm:px-4 ${isFiltered ? "mt-1.5 sm:mt-3" : "mt-2 sm:mt-4"}`}>
-                  <div className="w-full h-12 sm:h-28 md:h-44 overflow-hidden rounded-none border border-white/10 mb-4 sm:mb-6 bg-black select-none">
-                    <img
-                      src={settings.aislesBannerImage || "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=1600&auto=format&fit=crop&q=80"}
-                      alt="Pasillos"
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full h-full object-cover rounded-none"
-                    />
+                {/* Sección Amplia y Dedicada de Productos */}
+                <div className="space-y-10 sm:space-y-12 mb-8">
+                  {activeAisles.map((aisleName) => {
+                    const aisleProducts = groupedByAisle[aisleName] || [];
+                    if (aisleProducts.length === 0) return null;
+
+                    return (
+                      <div key={aisleName} id={`aisle-dedicated-${aisleName}`} className="scroll-mt-24">
+                        <div className="flex items-center gap-3 mb-3.5 sm:mb-4">
+                          <h3 className="text-sm sm:text-base font-black uppercase tracking-wider text-[#ffd025]">
+                            {aisleName}
+                          </h3>
+                          <div className="flex-1 border-t border-white/15" />
+                          <span className="text-[10px] text-gray-400 font-semibold uppercase">
+                            {aisleProducts.length} {aisleProducts.length === 1 ? "producto" : "productos"}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 xs:grid-cols-3 md:grid-cols-4 gap-x-2 sm:gap-x-3 md:gap-x-3.5 gap-y-4 xs:gap-y-5 sm:gap-y-6 md:gap-y-8 items-stretch w-full">
+                          {aisleProducts.map((product) => (
+                            <div
+                              key={product.id}
+                              className="group flex flex-col justify-between h-full w-full"
+                            >
+                              <div>
+                                <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1.5 sm:mb-2">
+                                  {product.image ? (
+                                    <img
+                                      src={product.image}
+                                      alt={product.name}
+                                      loading="lazy"
+                                      decoding="async"
+                                      className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300"
+                                      onError={(e) => {
+                                        (e.currentTarget as HTMLImageElement).src =
+                                          "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-none">
+                                      <Package size={20} className="text-[#ffd025]/70" />
+                                      <span className="text-[8px] sm:text-[10px] mt-0.5 font-semibold uppercase">Fellas</span>
+                                    </div>
+                                  )}
+
+                                  {product.oferta && (
+                                    <div className="absolute top-0 left-0 z-10">
+                                      <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
+                                        OFERTA
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="h-3.5 sm:h-4 flex items-center mb-0.5 overflow-hidden">
+                                  {(product.subcategory || product.category || product.aisle) ? (
+                                    <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
+                                      {product.subcategory || product.category || product.aisle}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[7.5px] sm:text-[9px] font-medium uppercase tracking-wider text-transparent select-none">
+                                      -
+                                    </span>
+                                  )}
+                                </div>
+
+                                <h4
+                                  title={product.name}
+                                  className="text-[9.5px] xs:text-[10px] sm:text-[11.5px] md:text-[12px] font-semibold text-white leading-tight line-clamp-2 h-7 sm:h-8 md:h-8.5 block w-full group-hover:text-[#ffd025] transition-colors"
+                                >
+                                  {product.name}
+                                </h4>
+                              </div>
+
+                              <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1">
+                                <span className="text-[11px] sm:text-xs md:text-sm font-black text-[#ffd025] truncate">
+                                  ${Number(product.price || 0).toLocaleString("es-CL")}
+                                </span>
+
+                                <button
+                                  onClick={() => handleAddToCartClick(product)}
+                                  disabled={!isStoreOpen}
+                                  className="h-6 px-1.5 sm:px-2.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 rounded-none hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                                  title="Añadir al carrito"
+                                  aria-label="Añadir al carrito"
+                                >
+                                  <Plus size={12} strokeWidth={2.5} />
+                                  <span className="hidden sm:inline text-[10px]">Añadir</span>
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* BANNER PRINCIPAL */}
+              {!searchQuery && effectiveSlides.length > 0 && (
+                <div className="max-w-6xl mx-auto px-3 sm:px-4 mt-3 sm:mt-6">
+                  <div
+                    className="relative w-full h-32 sm:h-48 md:h-80 shadow-lg border border-white/10 bg-black select-none rounded-xl sm:rounded-2xl overflow-hidden"
+                    style={{ transform: "translateZ(0)", WebkitMaskImage: "-webkit-radial-gradient(white, black)" }}
+                  >
+                    {effectiveSlides.map((slide, i) => (
+                      <div
+                        key={i}
+                        className="absolute inset-0 transition-opacity duration-700"
+                        style={{ opacity: i === activeSlide ? 1 : 0, zIndex: i === activeSlide ? 2 : 1 }}
+                      >
+                        {slide.image && (
+                          <img
+                            loading={i === 0 ? "eager" : "lazy"}
+                            decoding="async"
+                            fetchPriority={i === 0 ? "high" : "auto"}
+                            src={slide.image}
+                            alt="Banner"
+                            className="w-full h-full object-cover"
+                          />
+                        )}
+                      </div>
+                    ))}
+                    {effectiveSlides.length > 1 && (
+                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
+                        {effectiveSlides.map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setActiveSlide(i)}
+                            className={`rounded-full transition-all duration-300 ${
+                              i === activeSlide
+                                ? "w-5 h-2 bg-[#ffd025]"
+                                : "w-2 h-2 bg-white/40 hover:bg-white/70"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
+                </div>
+              )}
 
-                  <div className="space-y-6 sm:space-y-8">
-                    {activeAisles.map((aisleName) => {
-                      const aisleProducts = groupedByAisle[aisleName] || [];
-                      if (aisleProducts.length === 0) return null;
+              {/* ESTADO DE FILTRO ACTIVO (CAMBIO DE PASILLO / CATEGORÍA DESDE EL ENCABEZADO) */}
+              {(() => {
+                const isFiltered = Boolean(activeAisle || activeCategory || navQuickFilter);
 
-                      return (
-                        <div key={aisleName} id={`aisle-${aisleName}`} className="scroll-mt-24">
-                          <div className="grid grid-cols-3 md:grid-cols-4 gap-1.5 xs:gap-2 sm:gap-3 md:gap-3.5 items-stretch w-full">
-                            {aisleProducts.map((product) => (
+                const recommendedSection = (
+                  <>
+                    <div className={`max-w-6xl mx-auto px-3 sm:px-4 ${isFiltered ? "mt-6 sm:mt-8 mb-4 sm:mb-6" : "mt-2 sm:mt-3 mb-1.5 sm:mb-2"} flex items-center gap-3`}>
+                      <div className="flex-1 border-t border-white/20"></div>
+                      <span className="text-[10px] sm:text-xs md:text-sm font-black tracking-widest text-[#ffd025] uppercase shrink-0">
+                        #NUESTROSRECOMENDADOS
+                      </span>
+                      <div className="flex-1 border-t border-white/20"></div>
+                    </div>
+
+                    <section className={`max-w-6xl mx-auto px-3 sm:px-4 ${isFiltered ? "mt-2 sm:mt-4" : "mt-1.5 sm:mt-3"}`}>
+                      <div className="w-full h-12 sm:h-28 md:h-44 overflow-hidden rounded-none border border-white/10 mb-3 sm:mb-4 bg-black select-none">
+                        <img
+                          src={settings.promoBannerImage || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=1600&auto=format&fit=crop&q=80"}
+                          alt="Promociones Fellas"
+                          loading="lazy"
+                          decoding="async"
+                          className="w-full h-full object-cover rounded-none"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-3 md:grid-cols-4 gap-1.5 xs:gap-2 sm:gap-3 md:gap-3.5 items-stretch w-full">
+                        {promoProducts.map((product, idx) => (
+                          <div
+                            key={product.id}
+                            className={`group flex flex-col justify-between h-full w-full ${
+                              idx >= 3 ? "hidden md:flex" : "flex"
+                            }`}
+                          >
+                            <div>
+                              <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1.5 sm:mb-2">
+                                {product.image ? (
+                                  <img
+                                    src={product.image}
+                                    alt={product.name}
+                                    loading="lazy"
+                                    decoding="async"
+                                    className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300"
+                                    onError={(e) => {
+                                      (e.currentTarget as HTMLImageElement).src =
+                                        "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-none">
+                                    <Package size={20} className="text-[#ffd025]/70" />
+                                    <span className="text-[8px] sm:text-[10px] mt-0.5 font-semibold uppercase">Fellas</span>
+                                  </div>
+                                )}
+
+                                <div className="absolute top-0 left-0 z-10">
+                                  <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
+                                    PROMO
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="h-3.5 sm:h-4 flex items-center mb-0.5 overflow-hidden">
+                                {(product.aisle || product.category) ? (
+                                  <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
+                                    {product.aisle || product.category}
+                                  </span>
+                                ) : (
+                                  <span className="text-[7.5px] sm:text-[9px] font-medium uppercase tracking-wider text-transparent select-none">
+                                    -
+                                  </span>
+                                )}
+                              </div>
+
+                              <h4
+                                title={product.name}
+                                className="text-[9.5px] xs:text-[10px] sm:text-[11.5px] md:text-[12px] font-semibold text-white leading-tight line-clamp-2 h-7 sm:h-8 md:h-8.5 block w-full group-hover:text-[#ffd025] transition-colors"
+                              >
+                                {product.name}
+                              </h4>
+                            </div>
+
+                            <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1">
+                              <span className="text-[11px] sm:text-xs md:text-sm font-black text-[#ffd025] truncate">
+                                ${Number(product.price || 0).toLocaleString("es-CL")}
+                              </span>
+
+                              <button
+                                onClick={() => handleAddToCartClick(product)}
+                                disabled={!isStoreOpen}
+                                className="h-6 px-1.5 sm:px-2.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 rounded-none hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                                title="Añadir al carrito"
+                                aria-label="Añadir al carrito"
+                              >
+                                <Plus size={12} strokeWidth={2.5} />
+                                <span className="hidden sm:inline text-[10px]">Añadir</span>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  </>
+                );
+
+                const collectionsSection = (
+                  <>
+                    <div className={`max-w-6xl mx-auto px-3 sm:px-4 ${isFiltered ? "mt-2 sm:mt-3 mb-1.5 sm:mb-2" : "mt-5 sm:mt-7 mb-2.5 sm:mb-3"} flex items-center justify-between`}>
+                      <span className="text-[10px] sm:text-xs md:text-sm font-black tracking-widest text-[#ffd025] uppercase">
+                        #NUESTRASCOLECCIONES
+                      </span>
+                      {!settings.contingencyMode && (
+                        <button
+                          onClick={() => {
+                            setShowDedicatedProductsPage(true);
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          }}
+                          className="text-[10px] sm:text-xs font-bold text-gray-400 hover:text-[#ffd025] transition-colors flex items-center gap-0.5 cursor-pointer bg-transparent border-0 p-0"
+                          title="Ver catálogo completo"
+                        >
+                          <span>Ver más</span>
+                          <ChevronRight size={13} strokeWidth={2.5} />
+                        </button>
+                      )}
+                    </div>
+
+                    <section className={`max-w-6xl mx-auto px-3 sm:px-4 ${isFiltered ? "mt-1.5 sm:mt-3" : "mt-2 sm:mt-4"}`}>
+                      <div className="w-full h-12 sm:h-28 md:h-44 overflow-hidden rounded-none border border-white/10 mb-4 sm:mb-6 bg-black select-none">
+                        <img
+                          src={settings.aislesBannerImage || "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=1600&auto=format&fit=crop&q=80"}
+                          alt="Pasillos"
+                          loading="lazy"
+                          decoding="async"
+                          className="w-full h-full object-cover rounded-none"
+                        />
+                      </div>
+
+                      {/* VERSIÓN PARA CELULAR (MOBILE): Primera vista de 6 productos + Botón de Ver más */}
+                      <div className="md:hidden">
+                        <div className="grid grid-cols-3 gap-x-1.5 xs:gap-x-2 gap-y-4 xs:gap-y-5 items-stretch w-full">
+                          {homeCollectionProducts.map((product) => (
+                            <div
+                              key={product.id}
+                              className="group flex flex-col justify-between h-full w-full"
+                            >
+                              <div>
+                                <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1.5 sm:mb-2">
+                                  {product.image ? (
+                                    <img
+                                      src={product.image}
+                                      alt={product.name}
+                                      loading="lazy"
+                                      decoding="async"
+                                      className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300"
+                                      onError={(e) => {
+                                        (e.currentTarget as HTMLImageElement).src =
+                                          "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-none">
+                                      <Package size={20} className="text-[#ffd025]/70" />
+                                      <span className="text-[8px] sm:text-[10px] mt-0.5 font-semibold uppercase">Fellas</span>
+                                    </div>
+                                  )}
+
+                                  {product.oferta && (
+                                    <div className="absolute top-0 left-0 z-10">
+                                      <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
+                                        OFERTA
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="h-3.5 sm:h-4 flex items-center mb-0.5 overflow-hidden">
+                                  {(product.subcategory || product.category || product.aisle) ? (
+                                    <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
+                                      {product.subcategory || product.category || product.aisle}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[7.5px] sm:text-[9px] font-medium uppercase tracking-wider text-transparent select-none">
+                                      -
+                                    </span>
+                                  )}
+                                </div>
+
+                                <h4
+                                  title={product.name}
+                                  className="text-[9.5px] xs:text-[10px] sm:text-[11.5px] md:text-[12px] font-semibold text-white leading-tight line-clamp-2 h-7 sm:h-8 md:h-8.5 block w-full group-hover:text-[#ffd025] transition-colors"
+                                >
+                                  {product.name}
+                                </h4>
+                              </div>
+
+                              <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1">
+                                <span className="text-[11px] sm:text-xs md:text-sm font-black text-[#ffd025] truncate">
+                                  ${Number(product.price || 0).toLocaleString("es-CL")}
+                                </span>
+
+                                <button
+                                  onClick={() => handleAddToCartClick(product)}
+                                  disabled={!isStoreOpen}
+                                  className="h-6 px-1.5 sm:px-2.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 rounded-none hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                                  title="Añadir al carrito"
+                                  aria-label="Añadir al carrito"
+                                >
+                                  <Plus size={12} strokeWidth={2.5} />
+                                  <span className="hidden sm:inline text-[10px]">Añadir</span>
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* VERSIÓN ESCRITORIO (DESKTOP) */}
+                      {!isFiltered ? (
+                        /* Si no hay filtro activo en PC (Home inicial): Mostrar la Selección Manual de Colecciones */
+                        <div className="hidden md:block">
+                          <div className="grid grid-cols-3 md:grid-cols-6 gap-x-2 sm:gap-x-3 md:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full">
+                            {homeCollectionProducts.map((product) => (
                               <div
                                 key={product.id}
                                 className="group flex flex-col justify-between h-full w-full"
@@ -2635,8 +3031,8 @@ export default function Storefront() {
                                     )}
 
                                     {product.oferta && (
-                                      <div className="absolute top-1 left-1 z-10">
-                                        <span className="px-1.5 py-0.5 bg-[#ffd025] text-black text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
+                                      <div className="absolute top-0 left-0 z-10">
+                                        <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
                                           OFERTA
                                         </span>
                                       </div>
@@ -2682,65 +3078,306 @@ export default function Storefront() {
                               </div>
                             ))}
                           </div>
-
-                          <div className="w-full border-b border-white/10 mt-6 sm:mt-8" />
                         </div>
+                      ) : (
+                        /* Si hay filtro activo en PC (Pasillo / Categoría): Desglose de catálogo filtrado */
+                        <div className="hidden md:block space-y-10 sm:space-y-12">
+                          {activeAisles.map((aisleName, aisleIdx) => {
+                            const rawAisleProducts = groupedByAisle[aisleName] || [];
+                            const aisleProducts = settings.contingencyMode ? rawAisleProducts.slice(0, 6) : rawAisleProducts;
+                            if (aisleProducts.length === 0) return null;
+
+                            return (
+                              <div key={aisleName} id={`aisle-${aisleName}`} className="scroll-mt-24">
+                                <div className="grid grid-cols-3 md:grid-cols-4 gap-x-1.5 xs:gap-x-2 sm:gap-x-3 md:gap-x-3.5 gap-y-4 xs:gap-y-5 sm:gap-y-6 md:gap-y-8 items-stretch w-full">
+                                  {aisleProducts.map((product) => (
+                                    <div
+                                      key={product.id}
+                                      className="group flex flex-col justify-between h-full w-full"
+                                    >
+                                      <div>
+                                        <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1.5 sm:mb-2">
+                                          {product.image ? (
+                                            <img
+                                              src={product.image}
+                                              alt={product.name}
+                                              loading="lazy"
+                                              decoding="async"
+                                              className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300"
+                                              onError={(e) => {
+                                                (e.currentTarget as HTMLImageElement).src =
+                                                  "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
+                                              }}
+                                            />
+                                          ) : (
+                                            <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-none">
+                                              <Package size={20} className="text-[#ffd025]/70" />
+                                              <span className="text-[8px] sm:text-[10px] mt-0.5 font-semibold uppercase">Fellas</span>
+                                            </div>
+                                          )}
+
+                                          {product.oferta && (
+                                            <div className="absolute top-0 left-0 z-10">
+                                              <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
+                                                OFERTA
+                                              </span>
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        <div className="h-3.5 sm:h-4 flex items-center mb-0.5 overflow-hidden">
+                                          {(product.subcategory || product.category || product.aisle) ? (
+                                            <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
+                                              {product.subcategory || product.category || product.aisle}
+                                            </span>
+                                          ) : (
+                                            <span className="text-[7.5px] sm:text-[9px] font-medium uppercase tracking-wider text-transparent select-none">
+                                              -
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        <h4
+                                          title={product.name}
+                                          className="text-[9.5px] xs:text-[10px] sm:text-[11.5px] md:text-[12px] font-semibold text-white leading-tight line-clamp-2 h-7 sm:h-8 md:h-8.5 block w-full group-hover:text-[#ffd025] transition-colors"
+                                        >
+                                          {product.name}
+                                        </h4>
+                                      </div>
+
+                                      <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1">
+                                        <span className="text-[11px] sm:text-xs md:text-sm font-black text-[#ffd025] truncate">
+                                          ${Number(product.price || 0).toLocaleString("es-CL")}
+                                        </span>
+
+                                        <button
+                                          onClick={() => handleAddToCartClick(product)}
+                                          disabled={!isStoreOpen}
+                                          className="h-6 px-1.5 sm:px-2.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 rounded-none hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                                          title="Añadir al carrito"
+                                          aria-label="Añadir al carrito"
+                                        >
+                                          <Plus size={12} strokeWidth={2.5} />
+                                          <span className="hidden sm:inline text-[10px]">Añadir</span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {aisleIdx < activeAisles.length - 1 && (
+                                  <div className="w-full border-b border-white/10 mt-8 sm:mt-10" />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </section>
+                  </>
+                );
+
+                return isFiltered ? (
+                  <>
+                    {collectionsSection}
+                    {recommendedSection}
+                  </>
+                ) : (
+                  <>
+                    {recommendedSection}
+                    {collectionsSection}
+                  </>
+                );
+              })()}
+
+              {/* SECCIÓN #NUESTROSCLIENTES: 2 reseñas en celular, 4 reseñas en computador */}
+              <div className="max-w-6xl mx-auto px-3 sm:px-4 mt-10 mb-6 flex items-center gap-3">
+                <div className="flex-1 border-t border-white/20"></div>
+                <span className="text-[10px] sm:text-xs md:text-sm font-black tracking-widest text-[#ffd025] uppercase shrink-0">
+                  #NUESTROSCLIENTES
+                </span>
+                <div className="flex-1 border-t border-white/20"></div>
+              </div>
+
+              <div className="max-w-4xl mx-auto px-3 sm:px-4 mb-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {googleMapsData.reviews.slice(0, 4).map((rev, idx) => (
+                    <div
+                      key={rev.id}
+                      className={`bg-[#181826] border border-white/10 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col justify-between hover:border-[#ffd025]/40 transition-all ${
+                        idx >= 2 ? "hidden md:flex" : "flex"
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            {rev.author_photo ? (
+                              <img
+                                src={rev.author_photo}
+                                alt={rev.author_name}
+                                className="w-10 h-10 rounded-full object-cover border border-white/20"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-[#ffd025] text-black font-black flex items-center justify-center text-sm">
+                                {rev.author_name.charAt(0)}
+                              </div>
+                            )}
+                            <div>
+                              <h4 className="text-white text-xs sm:text-sm font-bold">{rev.author_name}</h4>
+                              <span className="text-[10px] text-gray-400">{rev.relative_time_description}</span>
+                            </div>
+                          </div>
+                          <div className="flex text-amber-400 text-xs">
+                            {Array.from({ length: rev.rating }).map((_, i) => (
+                              <span key={i}>★</span>
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-gray-300 text-xs sm:text-[13px] leading-relaxed italic">
+                          "{rev.text}"
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          <footer className="mt-8 pt-6 pb-6 border-t border-white/10 bg-black/60 text-gray-400">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6">
+              {/* Distribución exacta en 2 Columnas con línea divisoria central */}
+              <div className="grid grid-cols-2 gap-3 sm:gap-8 items-start">
+                {/* COLUMNA 1: Logo y Descripción de la Tienda */}
+                <div className="flex flex-col items-start gap-2.5 pr-3 sm:pr-8 border-r border-white/15 h-full">
+                  <div className="flex items-center justify-start min-h-[32px] sm:min-h-[40px]">
+                    {settings.footerLogo || settings.logo ? (
+                      <img
+                        src={settings.footerLogo || settings.logo}
+                        alt={settings.pageTitle || "Tienda"}
+                        className="h-8 sm:h-11 w-auto max-w-[120px] sm:max-w-[160px] object-contain"
+                      />
+                    ) : (
+                      <h3 className="text-xs sm:text-base font-black tracking-wider text-[#ffd025] uppercase">
+                        {settings.pageTitle || "FELLA'S MARKET"}
+                      </h3>
+                    )}
+                  </div>
+                  <p className="text-[10px] sm:text-xs text-gray-300 leading-snug line-clamp-2 max-w-sm m-0">
+                    {settings.footerDescription || settings.bannerDescription || "Tu botillería y minimarket de confianza. Cervezas heladas, destilados, snacks y delivery rápido."}
+                  </p>
+                </div>
+
+                {/* COLUMNA 2: Redes Sociales y justo debajo los Pasillos de la página */}
+                <div className="flex flex-col items-end gap-3 text-right pl-2 sm:pl-4">
+                  {/* Redes Sociales */}
+                  <div className="flex items-center justify-end gap-2">
+                    <a
+                      href={settings.socialInstagram || "https://instagram.com"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 hover:bg-[#ffd025] hover:text-black border border-white/15 flex items-center justify-center text-gray-300 transition-all shadow shrink-0"
+                      title="Instagram"
+                      aria-label="Instagram"
+                    >
+                      <Instagram size={13} className="sm:w-4 sm:h-4" />
+                    </a>
+                    <a
+                      href={settings.socialFacebook || "https://facebook.com"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 hover:bg-[#ffd025] hover:text-black border border-white/15 flex items-center justify-center text-gray-300 transition-all shadow shrink-0"
+                      title="Facebook"
+                      aria-label="Facebook"
+                    >
+                      <Facebook size={13} className="sm:w-4 sm:h-4" />
+                    </a>
+                    <a
+                      href={
+                        settings.socialWhatsapp || settings.whatsapp || settings.contactPhone
+                          ? `https://api.whatsapp.com/send?phone=${(settings.socialWhatsapp || settings.whatsapp || settings.contactPhone || "").replace(/\D/g, "")}`
+                          : "https://whatsapp.com"
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 hover:bg-[#25D366] hover:text-white border border-white/15 flex items-center justify-center text-gray-300 transition-all shadow shrink-0"
+                      title="WhatsApp"
+                      aria-label="WhatsApp"
+                    >
+                      <MessageCircle size={13} className="sm:w-4 sm:h-4" />
+                    </a>
+                  </div>
+
+                  {/* Justo debajo los Pasillos de la página */}
+                  <div className="w-full flex flex-wrap justify-end gap-x-2.5 gap-y-1">
+                    <button
+                      onClick={() => {
+                        setActiveCategory("");
+                        setActiveAisle("");
+                        setNavQuickFilter("");
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                      className={`text-[9.5px] sm:text-[11px] uppercase tracking-wider transition-colors ${
+                        !activeCategory && !activeAisle && !navQuickFilter
+                          ? "text-[#ffd025] font-black"
+                          : "text-gray-400 hover:text-white font-medium"
+                      }`}
+                    >
+                      Todos
+                    </button>
+                    {(aisles.length > 0 ? aisles : categories).slice(0, 6).map((item) => {
+                      const isAisleSelected = activeAisle === item;
+                      const isCategorySelected = activeCategory === item;
+                      const isSelected = isAisleSelected || isCategorySelected;
+                      return (
+                        <button
+                          key={item}
+                          onClick={() => {
+                            setNavQuickFilter("");
+                            if (aisles.includes(item)) {
+                              setActiveCategory("");
+                              setActiveAisle(item);
+                            } else {
+                              setActiveAisle("");
+                              setActiveCategory(item);
+                            }
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          }}
+                          className={`text-[9.5px] sm:text-[11px] uppercase tracking-wider transition-colors ${
+                            isSelected
+                              ? "text-[#ffd025] font-black"
+                              : "text-gray-400 hover:text-white font-medium"
+                          }`}
+                        >
+                          {item}
+                        </button>
                       );
                     })}
                   </div>
-                </section>
-              </>
-            );
+                </div>
+              </div>
 
-            return isFiltered ? (
-              <>
-                {collectionsSection}
-                {recommendedSection}
-              </>
-            ) : (
-              <>
-                {recommendedSection}
-                {collectionsSection}
-              </>
-            );
-          })()}
-
-          {(settings.contactPhone || settings.contactAddress || settings.contactHours) && (
-            <div className="mt-10 pt-5 border-t border-white/10 px-4">
-              <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
-                {settings.contactPhone && (
-                  <div className="flex items-center gap-2 text-gray-400">
-                    <PhoneCall size={14} className="text-[#ffd025] flex-shrink-0" />
-                    <span className="text-sm">{settings.contactPhone}</span>
-                  </div>
-                )}
-                {settings.contactAddress && (
-                  <div className="flex items-center gap-2 text-gray-400">
-                    <MapPinIcon size={14} className="text-[#ffd025] flex-shrink-0" />
-                    <span className="text-sm">{settings.contactAddress}</span>
-                  </div>
-                )}
-                {settings.contactHours && (
-                  <div className="flex items-center gap-2 text-gray-400">
-                    <ClockIcon size={14} className="text-[#ffd025] flex-shrink-0" />
-                    <span className="text-sm">{settings.contactHours}</span>
-                  </div>
-                )}
+              {/* Derechos de Autor y Créditos de Agencia / Desarrollador (Una sola línea breve) */}
+              <div className="mt-5 pt-3 border-t border-white/10 flex items-center justify-between text-[9.5px] sm:text-[11px] text-gray-400 uppercase tracking-wider">
+                <span className="font-semibold truncate">
+                  © {settings.pageTitle || "FELLA'S MARKET"}
+                </span>
+                <div className="flex items-center gap-1.5 shrink-0 ml-3">
+                  <span className="text-gray-500 font-medium">Por</span>
+                  {settings.agencyLogo ? (
+                    <img
+                      src={settings.agencyLogo}
+                      alt={settings.agencyName || "Logo Agencia"}
+                      className="h-3.5 sm:h-4 object-contain opacity-85 hover:opacity-100 transition-opacity"
+                    />
+                  ) : (
+                    <span className="text-[#ffd025] font-black tracking-wider">
+                      {settings.agencyName || "Fella's Market"}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-          )}
-
-          <footer className="mt-6 py-4 border-t border-gray-800/30 flex items-center justify-center gap-2 opacity-40 hover:opacity-100 transition-opacity">
-            <p className="text-[10px] text-gray-600 uppercase tracking-widest font-medium m-0">
-              Desarrollado por {settings.agencyName || "Nosotros"}
-            </p>
-            {settings.agencyLogo && (
-              <img
-                src={settings.agencyLogo}
-                alt="Logo Agencia"
-                className="h-3 md:h-4 object-contain grayscale hover:grayscale-0 transition-all duration-300 opacity-70 hover:opacity-100"
-              />
-            )}
           </footer>
         </main>
         </div>
@@ -3178,7 +3815,7 @@ export default function Storefront() {
       {view === "admin" && (
         <div className="min-h-screen bg-[#111113] text-white flex flex-col md:flex-row font-sans">
           {/* Desktop Left Sidebar (Fixed / Sticky) */}
-          <aside className="hidden md:flex md:w-64 lg:w-72 bg-[#17171c] border-r border-white/10 flex-col shrink-0 min-h-screen sticky top-0 h-screen overflow-y-auto">
+          <aside className="hidden md:flex md:w-64 lg:w-72 bg-[#17171c] border-r border-white/10 flex-col shrink-0 min-h-screen sticky top-0 h-screen overflow-y-auto custom-admin-scrollbar">
             {/* Sidebar Header / Brand */}
             <div className="p-5 border-b border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -3201,7 +3838,7 @@ export default function Storefront() {
             </div>
 
             {/* Navigation Links */}
-            <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+            <nav className="flex-1 p-3 space-y-1 overflow-y-auto custom-admin-scrollbar">
               <div className="px-3 py-2 text-[10px] font-black text-gray-500 uppercase tracking-widest">
                 Menú Principal
               </div>
@@ -3296,7 +3933,7 @@ export default function Storefront() {
                     <X size={18} />
                   </button>
                 </div>
-                <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
+                <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto custom-admin-scrollbar">
                   {[
                     { id: "products", label: "Productos", icon: Package },
                     { id: "classifications", label: "Clasificaciones", icon: Tag },
@@ -3403,6 +4040,7 @@ export default function Storefront() {
                           brand: nextVal,
                           ticker: nextVal,
                           banners: nextVal,
+                          featured: nextVal,
                           delivery: nextVal,
                           hours: nextVal,
                           contingency: nextVal,
@@ -3427,14 +4065,15 @@ export default function Storefront() {
                 {/* Step Sub-Tabs (Paso a Paso) */}
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-white/10 scrollbar-hide">
                   {[
-                    { id: "all", label: "Todos los Ajustes", icon: Layers, badge: "7 Plegables" },
+                    { id: "all", label: "Todos los Ajustes", icon: Layers, badge: "8 Plegables" },
                     { id: "brand", label: "1. Marca & Logo", icon: Edit3, badge: settingsDraft.pageTitle || "Tienda" },
                     { id: "ticker", label: "2. Avisos Ticker", icon: Sparkles, badge: `${(settingsDraft.announcements ?? []).length} avisos` },
-                    { id: "banners", label: "3. Carrusel Banners", icon: Eye, badge: `${(settingsDraft.bannerSlides ?? []).length} slides` },
-                    { id: "delivery", label: "4. Delivery & Zonas", icon: MapPin, badge: "Tarifas" },
-                    { id: "hours", label: "5. Horarios de Pedido", icon: Clock, badge: `${settingsDraft.openTime ?? "11:00"} - ${settingsDraft.closeTime ?? "23:00"}` },
-                    { id: "contingency", label: "6. Contingencia", icon: Ban, badge: settingsDraft.contingencyMode ? "🔴 Activo" : "🟢 Normal", highlight: Boolean(settingsDraft.contingencyMode) },
-                    { id: "contact", label: "7. Contacto & Redes", icon: Phone, badge: settingsDraft.contactPhone ? "Listo" : "Incompleto" },
+                    { id: "banners", label: "3. Banners de la Tienda", icon: ImageIcon, badge: `${(settingsDraft.bannerSlides ?? []).length} slides + 2 fijos` },
+                    { id: "featured", label: "4. Productos Destacados", icon: Star, badge: `${(settingsDraft.recommendedProductIds ?? []).length} promos / ${(settingsDraft.homeCollectionProductIds ?? []).length} colec.` },
+                    { id: "delivery", label: "5. Delivery & Zonas", icon: MapPin, badge: "Tarifas" },
+                    { id: "hours", label: "6. Horarios de Pedido", icon: Clock, badge: `${settingsDraft.openTime ?? "11:00"} - ${settingsDraft.closeTime ?? "23:00"}` },
+                    { id: "contingency", label: "7. Contingencia", icon: Ban, badge: settingsDraft.contingencyMode ? "🔴 Activo" : "🟢 Normal", highlight: Boolean(settingsDraft.contingencyMode) },
+                    { id: "contact", label: "8. Contacto & Redes", icon: Phone, badge: settingsDraft.contactPhone ? "Listo" : "Incompleto" },
                   ].map((step) => {
                     const Icon = step.icon;
                     const isActive = settingsSubTab === step.id;
@@ -3662,11 +4301,41 @@ export default function Storefront() {
                       </button>
 
                       {openSettingsSections.ticker && (
-                        <div className="p-6 pt-0 border-t border-white/5 space-y-3 animate-fade-in">
-                          <p className="text-xs text-gray-400 pt-3">
-                            Aparecen en loop animado arriba del encabezado. Puedes potenciar cada aviso con IA para mayor engagement.
-                          </p>
-                          <div className="space-y-2">
+                        <div className="p-6 pt-0 border-t border-white/5 space-y-5 animate-fade-in">
+                          {/* 1. Anuncio Breve Superior (Barra Degradada sobre el Encabezado) */}
+                          <div className="bg-[#181826] p-4 rounded-2xl border border-white/10 space-y-2 mt-4">
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-black text-[#ffd025] uppercase tracking-wider block">
+                                Anuncio Breve Superior (Barra sobre el Encabezado)
+                              </label>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                                Visible siempre
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-gray-400">
+                              Texto que aparece en la barra superior ultra delgada con degradado naranja sobre el logo y buscador.
+                            </p>
+                            <input
+                              type="text"
+                              value={settingsDraft.topAnnouncementText ?? ""}
+                              onChange={(e) => setSettingsDraft({ ...settingsDraft, topAnnouncementText: e.target.value })}
+                              placeholder="Ej: PIDE ANTES DE LAS 8:00 AM Y RECIBE EL MISMO DÍA (VER COMUNAS)"
+                              className="w-full bg-[#12121d] border border-white/10 rounded-xl p-3 text-white text-xs focus:border-[#ffd025] focus:outline-none placeholder-gray-500"
+                            />
+                          </div>
+
+                          {/* 2. Mensajes Rotativos del Ticker */}
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-black text-purple-300 uppercase tracking-wider block">
+                                Mensajes Rotativos de Avisos
+                              </span>
+                              <span className="text-[10px] text-gray-400">Rotan en la tienda</span>
+                            </div>
+                            <p className="text-xs text-gray-400">
+                              Avisos adicionales que rotan periódicamente. Puedes potenciar cada aviso con IA para mayor engagement.
+                            </p>
+                            <div className="space-y-2">
                             {((settingsDraft.announcements ?? []) as string[]).map((txt, idx) => (
                               <div key={idx} className="flex gap-2 items-center">
                                 <input
@@ -3730,6 +4399,7 @@ export default function Storefront() {
                             >
                               <Plus size={14} /> Agregar Nuevo Aviso
                             </button>
+                            </div>
                           </div>
 
                           <div className="flex justify-end pt-2">
@@ -3749,7 +4419,7 @@ export default function Storefront() {
                     </div>
                   )}
 
-                  {/* SECCIÓN 3: Carrusel Banners */}
+                  {/* SECCIÓN 3: Gestión de Banners de la Tienda */}
                   {(settingsSubTab === "all" || settingsSubTab === "banners") && (
                     <div className="bg-[#13131f]/90 backdrop-blur-2xl rounded-3xl border border-white/10 overflow-hidden shadow-xl shadow-black/50 transition-all">
                       <button
@@ -3759,16 +4429,16 @@ export default function Storefront() {
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
-                            <Eye size={18} />
+                            <ImageIcon size={18} />
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="font-black text-white text-base uppercase">Paso 3: Banners de Portada (Slides)</span>
+                              <span className="font-black text-white text-base uppercase">Paso 3: Banners de la Tienda (Portada, Promos y Pasillos)</span>
                               <span className="text-[10px] bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded-full font-bold">
-                                {(settingsDraft.bannerSlides ?? []).length} slides
+                                {(settingsDraft.bannerSlides ?? []).length} slides + 2 banners
                               </span>
                             </div>
-                            <p className="text-xs text-gray-400 mt-0.5">Imágenes principales de cabecera con rotación automática.</p>
+                            <p className="text-xs text-gray-400 mt-0.5">Modifica el banner de promociones, el banner de pasillos y el carrusel de portada.</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 text-gray-400">
@@ -3777,116 +4447,771 @@ export default function Storefront() {
                       </button>
 
                       {openSettingsSections.banners && (
-                        <div className="p-6 pt-0 border-t border-white/5 space-y-4 animate-fade-in">
-                          <div className="flex items-center justify-between pt-3">
-                            <span className="text-xs text-gray-400">Personaliza las imágenes y llamados a la acción de tu portada.</span>
+                        <div className="p-6 pt-0 border-t border-white/5 space-y-6 animate-fade-in">
+                          {/* Banner 1: Banner de Promociones (#NUESTROSRECOMENDADOS) */}
+                          <div className="bg-[#181826] p-4 sm:p-5 rounded-2xl border border-white/10 space-y-3 mt-4">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div>
+                                <span className="text-xs font-black text-[#ffd025] uppercase tracking-wider block">
+                                  1. Banner Sección Promociones (#NUESTROSRECOMENDADOS)
+                                </span>
+                                <p className="text-[11px] text-gray-400 mt-0.5">
+                                  Imagen panorámica horizontal que encabeza las promociones y recomendaciones del Tío Fellas.
+                                </p>
+                              </div>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/15 text-red-300 border border-red-500/30 font-bold uppercase">
+                                Promociones
+                              </span>
+                            </div>
+
+                            <div className="w-full h-20 sm:h-28 md:h-36 overflow-hidden rounded-xl border border-white/10 bg-black relative select-none">
+                              <img
+                                src={settingsDraft.promoBannerImage || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=1600&auto=format&fit=crop&q=80"}
+                                alt="Banner Promociones"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+
+                            <div className="flex gap-2 items-center">
+                              <input
+                                type="text"
+                                value={settingsDraft.promoBannerImage || ""}
+                                onChange={(e) => setSettingsDraft({ ...settingsDraft, promoBannerImage: e.target.value })}
+                                onBlur={(e) =>
+                                  resolveImageUrl(e.target.value, (r) =>
+                                    setSettingsDraft((p) => ({ ...p, promoBannerImage: r }))
+                                  )
+                                }
+                                className="flex-1 bg-[#12121d] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#ffd025]"
+                                placeholder="URL imagen del banner de promociones (o presiona Subir)"
+                              />
+                              <label
+                                className="bg-[#ffd025]/10 text-[#ffd025] px-3.5 py-2.5 rounded-xl flex items-center cursor-pointer hover:bg-[#ffd025]/20 border border-[#ffd025]/20 shrink-0 font-bold text-xs gap-1.5"
+                                title="Subir imagen desde tu dispositivo"
+                              >
+                                <Upload size={14} />
+                                <span className="hidden sm:inline">Subir</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) =>
+                                    handleImageUpload(e, (url) =>
+                                      setSettingsDraft({ ...settingsDraft, promoBannerImage: url })
+                                    )
+                                  }
+                                />
+                              </label>
+                              {settingsDraft.promoBannerImage && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSettingsDraft({ ...settingsDraft, promoBannerImage: "" })}
+                                  className="p-2.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-xl transition-colors border border-red-500/20 text-xs shrink-0"
+                                  title="Restaurar por defecto"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Banner 2: Banner de Pasillos y Colecciones (#NUESTRASCOLECCIONES) */}
+                          <div className="bg-[#181826] p-4 sm:p-5 rounded-2xl border border-white/10 space-y-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div>
+                                <span className="text-xs font-black text-[#ffd025] uppercase tracking-wider block">
+                                  2. Banner Sección Colecciones & Pasillos (#NUESTRASCOLECCIONES)
+                                </span>
+                                <p className="text-[11px] text-gray-400 mt-0.5">
+                                  Imagen panorámica horizontal que se muestra sobre los pasillos en la portada y en la pestaña de productos.
+                                </p>
+                              </div>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-bold uppercase">
+                                Pasillos
+                              </span>
+                            </div>
+
+                            <div className="w-full h-20 sm:h-28 md:h-36 overflow-hidden rounded-xl border border-white/10 bg-black relative select-none">
+                              <img
+                                src={settingsDraft.aislesBannerImage || "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=1600&auto=format&fit=crop&q=80"}
+                                alt="Banner Pasillos"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+
+                            <div className="flex gap-2 items-center">
+                              <input
+                                type="text"
+                                value={settingsDraft.aislesBannerImage || ""}
+                                onChange={(e) => setSettingsDraft({ ...settingsDraft, aislesBannerImage: e.target.value })}
+                                onBlur={(e) =>
+                                  resolveImageUrl(e.target.value, (r) =>
+                                    setSettingsDraft((p) => ({ ...p, aislesBannerImage: r }))
+                                  )
+                                }
+                                className="flex-1 bg-[#12121d] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#ffd025]"
+                                placeholder="URL imagen del banner de colecciones y pasillos"
+                              />
+                              <label
+                                className="bg-[#ffd025]/10 text-[#ffd025] px-3.5 py-2.5 rounded-xl flex items-center cursor-pointer hover:bg-[#ffd025]/20 border border-[#ffd025]/20 shrink-0 font-bold text-xs gap-1.5"
+                                title="Subir imagen desde tu dispositivo"
+                              >
+                                <Upload size={14} />
+                                <span className="hidden sm:inline">Subir</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) =>
+                                    handleImageUpload(e, (url) =>
+                                      setSettingsDraft({ ...settingsDraft, aislesBannerImage: url })
+                                    )
+                                  }
+                                />
+                              </label>
+                              {settingsDraft.aislesBannerImage && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSettingsDraft({ ...settingsDraft, aislesBannerImage: "" })}
+                                  className="p-2.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-xl transition-colors border border-red-500/20 text-xs shrink-0"
+                                  title="Restaurar por defecto"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Banner 3: Carrusel de Banners de Portada (Slides de Inicio) */}
+                          <div className="bg-[#181826] p-4 sm:p-5 rounded-2xl border border-white/10 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <span className="text-xs font-black text-[#ffd025] uppercase tracking-wider block">
+                                  3. Carrusel de Banners de Portada (Slides)
+                                </span>
+                                <p className="text-[11px] text-gray-400 mt-0.5">
+                                  Slides que rotan automáticamente en la parte superior de la página principal.
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newSlide: BannerSlide = { image: "", title: "", description: "" };
+                                  setSettingsDraft({
+                                    ...settingsDraft,
+                                    bannerSlides: [...(settingsDraft.bannerSlides ?? []), newSlide],
+                                  });
+                                }}
+                                className="flex items-center gap-1.5 text-xs bg-[#ffd025]/10 text-[#ffd025] border border-[#ffd025]/30 rounded-xl px-3 py-1.5 hover:bg-[#ffd025]/20 transition-colors font-bold"
+                              >
+                                <Plus size={14} /> Añadir slide
+                              </button>
+                            </div>
+
+                            {(settingsDraft.bannerSlides ?? []).length === 0 && (
+                              <div className="text-center py-6 border border-dashed border-white/10 rounded-2xl text-gray-500 text-xs">
+                                Sin slides dinámicos configurados.
+                              </div>
+                            )}
+
+                            <div className="space-y-3">
+                              {(settingsDraft.bannerSlides ?? []).map((slide, idx) => (
+                                <div
+                                  key={idx}
+                                  className="rounded-2xl border border-white/10 bg-[#141420] p-3.5 sm:p-4 space-y-3"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-black text-[#ffd025] uppercase tracking-wider">
+                                      Slide {idx + 1}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const slides = [...(settingsDraft.bannerSlides ?? [])];
+                                        slides.splice(idx, 1);
+                                        setSettingsDraft({ ...settingsDraft, bannerSlides: slides });
+                                      }}
+                                      className="text-red-400 hover:text-red-300 text-xs font-bold"
+                                    >
+                                      Eliminar
+                                    </button>
+                                  </div>
+                                  <div className="flex gap-2 items-center">
+                                    {slide.image && (
+                                      <img src={slide.image} alt="" className="w-16 h-10 object-cover rounded-lg bg-black border border-white/10 shrink-0" />
+                                    )}
+                                    <input
+                                      type="text"
+                                      value={slide.image}
+                                      onChange={(e) => {
+                                        const slides = [...(settingsDraft.bannerSlides ?? [])];
+                                        slides[idx] = { ...slides[idx]!, image: e.target.value };
+                                        setSettingsDraft({ ...settingsDraft, bannerSlides: slides });
+                                      }}
+                                      onBlur={(e) =>
+                                        resolveImageUrl(e.target.value, (r) => {
+                                          const slides = [...(settingsDraft.bannerSlides ?? [])];
+                                          slides[idx] = { ...slides[idx]!, image: r };
+                                          setSettingsDraft((p) => ({ ...p, bannerSlides: slides }));
+                                        })
+                                      }
+                                      className="flex-1 bg-[#12121d] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#ffd025]"
+                                      placeholder="URL imagen del slide"
+                                    />
+                                    <label className="bg-[#ffd025]/10 text-[#ffd025] px-3.5 py-2.5 rounded-xl flex items-center cursor-pointer hover:bg-[#ffd025]/20 border border-[#ffd025]/20 shrink-0">
+                                      <Upload size={15} />
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) =>
+                                          handleImageUpload(e, (url) => {
+                                            const slides = [...(settingsDraft.bannerSlides ?? [])];
+                                            slides[idx] = { ...slides[idx]!, image: url };
+                                            setSettingsDraft({ ...settingsDraft, bannerSlides: slides });
+                                          })
+                                        }
+                                      />
+                                    </label>
+                                  </div>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <input
+                                      type="text"
+                                      value={slide.title}
+                                      onChange={(e) => {
+                                        const slides = [...(settingsDraft.bannerSlides ?? [])];
+                                        slides[idx] = { ...slides[idx]!, title: e.target.value };
+                                        setSettingsDraft({ ...settingsDraft, bannerSlides: slides });
+                                      }}
+                                      className="w-full bg-[#12121d] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#ffd025]"
+                                      placeholder="Título (opcional)"
+                                    />
+                                    <input
+                                      type="text"
+                                      value={slide.description}
+                                      onChange={(e) => {
+                                        const slides = [...(settingsDraft.bannerSlides ?? [])];
+                                        slides[idx] = { ...slides[idx]!, description: e.target.value };
+                                        setSettingsDraft({ ...settingsDraft, bannerSlides: slides });
+                                      }}
+                                      className="w-full bg-[#12121d] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#ffd025]"
+                                      placeholder="Descripción corta (opcional)"
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end pt-2">
                             <button
                               type="button"
                               onClick={() => {
-                                const newSlide: BannerSlide = { image: "", title: "", description: "" };
-                                setSettingsDraft({
-                                  ...settingsDraft,
-                                  bannerSlides: [...(settingsDraft.bannerSlides ?? []), newSlide],
-                                });
+                                setSettingsSubTab("featured");
+                                setOpenSettingsSections((p) => ({ ...p, featured: true }));
                               }}
-                              className="flex items-center gap-1.5 text-xs bg-[#ffd025]/10 text-[#ffd025] border border-[#ffd025]/30 rounded-xl px-3 py-1.5 hover:bg-[#ffd025]/20 transition-colors font-bold"
+                              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
                             >
-                              <Plus size={14} /> Añadir slide
+                              Siguiente: Productos Destacados <ChevronRight size={14} />
                             </button>
                           </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-                          {(settingsDraft.bannerSlides ?? []).length === 0 && (
-                            <div className="text-center py-6 border border-dashed border-white/10 rounded-2xl text-gray-500 text-xs">
-                              Sin slides dinámicos configurados.
+                  {/* SECCIÓN 4: Productos Destacados (#NUESTROSRECOMENDADOS y #NUESTRASCOLECCIONES) */}
+                  {(settingsSubTab === "all" || settingsSubTab === "featured") && (
+                    <div className="bg-[#13131f]/90 backdrop-blur-2xl rounded-3xl border border-white/10 overflow-hidden shadow-xl shadow-black/50 transition-all">
+                      <button
+                        type="button"
+                        onClick={() => toggleSettingsSection("featured")}
+                        className="w-full p-5 sm:p-6 flex items-center justify-between text-left hover:bg-white/[0.02] transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                            <Star size={18} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-black text-white text-base uppercase">Paso 4: Selección de Productos Destacados</span>
+                              <span className="text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">
+                                {(settingsDraft.recommendedProductIds ?? []).length} promos / {(settingsDraft.homeCollectionProductIds ?? []).length} colec.
+                              </span>
                             </div>
-                          )}
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              Elige manualmente los productos de Promociones del Tío Fellas (hasta 4 en PC / 3 en celular) y los 6 productos iniciales de Colecciones antes de abrir el catálogo completo.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-400">
+                          {openSettingsSections.featured ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                        </div>
+                      </button>
 
-                          <div className="space-y-3">
-                            {(settingsDraft.bannerSlides ?? []).map((slide, idx) => (
-                              <div
-                                key={idx}
-                                className="rounded-2xl border border-white/10 bg-[#181826] p-4 space-y-3"
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[10px] font-black text-[#ffd025] uppercase tracking-wider">
-                                    Slide {idx + 1}
+                      {openSettingsSections.featured && (
+                        <div className="p-6 pt-0 border-t border-white/5 space-y-8 animate-fade-in">
+                          {/* BLOQUE A: #NUESTROSRECOMENDADOS (Promos del Tío Fellas) */}
+                          <div className="bg-[#181826] p-4 sm:p-5 rounded-2xl border border-white/10 space-y-4 mt-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-black text-[#ffd025] uppercase tracking-wider block">
+                                    A. Promociones del Tío Fellas (#NUESTROSRECOMENDADOS)
                                   </span>
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 font-bold border border-red-500/30">
+                                    {(settingsDraft.recommendedProductIds ?? []).length} seleccionados
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-gray-400 mt-0.5">
+                                  Estos productos aparecen en el bloque destacado con la etiqueta roja PROMO bajo el banner de ofertas.
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const candidates = products.filter((p) => !p.hidden && (p.oferta || p.bestseller)).map((p) => p.id);
+                                    const fallback = products.filter((p) => !p.hidden).map((p) => p.id);
+                                    const picked = Array.from(new Set([...candidates, ...fallback])).slice(0, 4);
+                                    setSettingsDraft((p) => ({ ...p, recommendedProductIds: picked }));
+                                    showToast("Cargadas 4 ofertas para recomendaciones");
+                                  }}
+                                  className="px-3 py-1.5 bg-[#ffd025]/10 hover:bg-[#ffd025]/20 text-[#ffd025] border border-[#ffd025]/30 rounded-xl text-[10px] font-bold uppercase transition-colors"
+                                >
+                                  ⚡ Cargar Ofertas
+                                </button>
+                                {(settingsDraft.recommendedProductIds ?? []).length > 0 && (
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      const slides = [...(settingsDraft.bannerSlides ?? [])];
-                                      slides.splice(idx, 1);
-                                      setSettingsDraft({ ...settingsDraft, bannerSlides: slides });
+                                      setSettingsDraft((p) => ({ ...p, recommendedProductIds: [] }));
+                                      showToast("Selección de promociones limpiada");
                                     }}
-                                    className="text-red-400 hover:text-red-300 text-xs font-bold"
+                                    className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-colors border border-white/10"
                                   >
-                                    Eliminar
+                                    Limpiar
                                   </button>
-                                </div>
-                                <div className="flex gap-2 items-center">
-                                  {slide.image && (
-                                    <img src={slide.image} alt="" className="w-16 h-10 object-cover rounded-lg bg-black border border-white/10 shrink-0" />
-                                  )}
-                                  <input
-                                    type="text"
-                                    value={slide.image}
-                                    onChange={(e) => {
-                                      const slides = [...(settingsDraft.bannerSlides ?? [])];
-                                      slides[idx] = { ...slides[idx]!, image: e.target.value };
-                                      setSettingsDraft({ ...settingsDraft, bannerSlides: slides });
-                                    }}
-                                    onBlur={(e) =>
-                                      resolveImageUrl(e.target.value, (r) => {
-                                        const slides = [...(settingsDraft.bannerSlides ?? [])];
-                                        slides[idx] = { ...slides[idx]!, image: r };
-                                        setSettingsDraft((p) => ({ ...p, bannerSlides: slides }));
-                                      })
-                                    }
-                                    className="flex-1 bg-[#12121d] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#ffd025]"
-                                    placeholder="URL imagen del banner"
-                                  />
-                                  <label className="bg-[#ffd025]/10 text-[#ffd025] px-3.5 py-2.5 rounded-xl flex items-center cursor-pointer hover:bg-[#ffd025]/20 border border-[#ffd025]/20 shrink-0">
-                                    <Upload size={15} />
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      className="hidden"
-                                      onChange={(e) =>
-                                        handleImageUpload(e, (url) => {
-                                          const slides = [...(settingsDraft.bannerSlides ?? [])];
-                                          slides[idx] = { ...slides[idx]!, image: url };
-                                          setSettingsDraft({ ...settingsDraft, bannerSlides: slides });
-                                        })
-                                      }
-                                    />
-                                  </label>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                  <input
-                                    type="text"
-                                    value={slide.title}
-                                    onChange={(e) => {
-                                      const slides = [...(settingsDraft.bannerSlides ?? [])];
-                                      slides[idx] = { ...slides[idx]!, title: e.target.value };
-                                      setSettingsDraft({ ...settingsDraft, bannerSlides: slides });
-                                    }}
-                                    className="w-full bg-[#12121d] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#ffd025]"
-                                    placeholder="Título (opcional)"
-                                  />
-                                  <input
-                                    type="text"
-                                    value={slide.description}
-                                    onChange={(e) => {
-                                      const slides = [...(settingsDraft.bannerSlides ?? [])];
-                                      slides[idx] = { ...slides[idx]!, description: e.target.value };
-                                      setSettingsDraft({ ...settingsDraft, bannerSlides: slides });
-                                    }}
-                                    className="w-full bg-[#12121d] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#ffd025]"
-                                    placeholder="Descripción corta (opcional)"
-                                  />
-                                </div>
+                                )}
                               </div>
-                            ))}
+                            </div>
+
+                            {/* Lista de productos actualmente seleccionados para Promos */}
+                            <div>
+                              <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block mb-2">
+                                Productos actualmente en #NUESTROSRECOMENDADOS (En orden de aparición):
+                              </span>
+                              {(settingsDraft.recommendedProductIds ?? []).length === 0 ? (
+                                <div className="text-center py-5 border border-dashed border-white/10 rounded-xl text-gray-400 text-xs">
+                                  Sin productos seleccionados manualmente. (El sistema mostrará automáticamente las ofertas del catálogo).
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                                  {(settingsDraft.recommendedProductIds ?? []).map((id, idx) => {
+                                    const prod = products.find((p) => p.id === id);
+                                    if (!prod) return null;
+                                    return (
+                                      <div
+                                        key={id}
+                                        className="bg-[#12121d] border border-white/10 rounded-xl p-2.5 flex items-center justify-between gap-2 shadow"
+                                      >
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                          <span className="text-[10px] font-black text-[#ffd025] px-1.5 py-0.5 bg-black/40 rounded border border-white/10">
+                                            #{idx + 1}
+                                          </span>
+                                          {prod.image ? (
+                                            <img
+                                              src={prod.image}
+                                              alt={prod.name}
+                                              className="w-10 h-10 object-cover rounded-lg bg-black shrink-0 border border-white/10"
+                                            />
+                                          ) : (
+                                            <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center shrink-0">
+                                              <Package size={16} className="text-gray-500" />
+                                            </div>
+                                          )}
+                                          <div className="min-w-0">
+                                            <p className="text-xs font-bold text-white truncate">{prod.name}</p>
+                                            <p className="text-[10px] text-[#ffd025] font-black">
+                                              ${Number(prod.price || 0).toLocaleString("es-CL")}
+                                            </p>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          {idx > 0 && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                const list = [...(settingsDraft.recommendedProductIds ?? [])];
+                                                const tmp = list[idx];
+                                                list[idx] = list[idx - 1]!;
+                                                list[idx - 1] = tmp!;
+                                                setSettingsDraft((p) => ({ ...p, recommendedProductIds: list }));
+                                              }}
+                                              className="p-1 text-gray-400 hover:text-white hover:bg-white/10 rounded"
+                                              title="Mover a la izquierda"
+                                            >
+                                              <ArrowLeft size={13} />
+                                            </button>
+                                          )}
+                                          {idx < (settingsDraft.recommendedProductIds ?? []).length - 1 && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                const list = [...(settingsDraft.recommendedProductIds ?? [])];
+                                                const tmp = list[idx];
+                                                list[idx] = list[idx + 1]!;
+                                                list[idx + 1] = tmp!;
+                                                setSettingsDraft((p) => ({ ...p, recommendedProductIds: list }));
+                                              }}
+                                              className="p-1 text-gray-400 hover:text-white hover:bg-white/10 rounded"
+                                              title="Mover a la derecha"
+                                            >
+                                              <ChevronRight size={13} />
+                                            </button>
+                                          )}
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setSettingsDraft((p) => ({
+                                                ...p,
+                                                recommendedProductIds: (p.recommendedProductIds ?? []).filter((x) => x !== id),
+                                              }));
+                                            }}
+                                            className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded"
+                                            title="Quitar de recomendaciones"
+                                          >
+                                            <X size={14} />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Buscador de catálogo para añadir a Promos */}
+                            <div className="pt-2 border-t border-white/5 space-y-2">
+                              <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block">
+                                Buscar y añadir productos del catálogo a Promociones:
+                              </span>
+                              <input
+                                type="text"
+                                value={featuredRecoSearch}
+                                onChange={(e) => setFeaturedRecoSearch(e.target.value)}
+                                placeholder="Filtrar por nombre, pasillo, pack, cerveza, pisco..."
+                                className="w-full bg-[#12121d] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:border-[#ffd025]"
+                              />
+                              <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1">
+                                {products
+                                  .filter((p) => !p.hidden)
+                                  .filter((p) => {
+                                    if (!featuredRecoSearch.trim()) return true;
+                                    const q = featuredRecoSearch.toLowerCase();
+                                    return (
+                                      p.name.toLowerCase().includes(q) ||
+                                      (p.category && p.category.toLowerCase().includes(q)) ||
+                                      (p.aisle && p.aisle.toLowerCase().includes(q))
+                                    );
+                                  })
+                                  .slice(0, 30)
+                                  .map((product) => {
+                                    const isSelected = (settingsDraft.recommendedProductIds ?? []).includes(product.id);
+                                    return (
+                                      <div
+                                        key={product.id}
+                                        className={`flex items-center justify-between p-2 rounded-xl border transition-all ${
+                                          isSelected
+                                            ? "bg-[#ffd025]/10 border-[#ffd025]/30 text-white"
+                                            : "bg-[#141420] border-white/5 text-gray-300 hover:border-white/15"
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                          {product.image ? (
+                                            <img
+                                              src={product.image}
+                                              alt={product.name}
+                                              className="w-8 h-8 object-cover rounded-lg bg-black shrink-0 border border-white/10"
+                                            />
+                                          ) : (
+                                            <div className="w-8 h-8 bg-white/5 rounded-lg flex items-center justify-center shrink-0">
+                                              <Package size={14} className="text-gray-500" />
+                                            </div>
+                                          )}
+                                          <div className="min-w-0">
+                                            <p className="text-xs font-bold text-white truncate">{product.name}</p>
+                                            <p className="text-[10px] text-gray-400">
+                                              ${Number(product.price || 0).toLocaleString("es-CL")} · {product.aisle || product.category}
+                                            </p>
+                                          </div>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (isSelected) {
+                                              setSettingsDraft((p) => ({
+                                                ...p,
+                                                recommendedProductIds: (p.recommendedProductIds ?? []).filter((x) => x !== product.id),
+                                              }));
+                                            } else {
+                                              setSettingsDraft((p) => ({
+                                                ...p,
+                                                recommendedProductIds: [...(p.recommendedProductIds ?? []), product.id],
+                                              }));
+                                              showToast(`"${product.name}" añadido a Promociones`);
+                                            }
+                                          }}
+                                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
+                                            isSelected
+                                              ? "bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30"
+                                              : "bg-[#ffd025] text-black font-black hover:bg-[#e5b81a]"
+                                          }`}
+                                        >
+                                          {isSelected ? "Quitar" : "+ Añadir a Promos"}
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* BLOQUE B: #NUESTRASCOLECCIONES (Productos destacados para Celular y PC) */}
+                          <div className="bg-[#181826] p-4 sm:p-5 rounded-2xl border border-white/10 space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-black text-[#ffd025] uppercase tracking-wider block">
+                                    B. Productos Destacados en #NUESTRASCOLECCIONES (Vista Celular y PC)
+                                  </span>
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
+                                    {(settingsDraft.homeCollectionProductIds ?? []).length} / 6 productos
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-gray-400 mt-0.5">
+                                  Estos son exactamente los 6 productos destacados que verá el cliente en su celular y en computador antes de hacer clic en "Ver más" / "Ver catálogo completo".
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const first6 = products.filter((p) => !p.hidden).slice(0, 6).map((p) => p.id);
+                                    setSettingsDraft((p) => ({ ...p, homeCollectionProductIds: first6 }));
+                                    showToast("Cargados los primeros 6 del catálogo");
+                                  }}
+                                  className="px-3 py-1.5 bg-[#ffd025]/10 hover:bg-[#ffd025]/20 text-[#ffd025] border border-[#ffd025]/30 rounded-xl text-[10px] font-bold uppercase transition-colors"
+                                >
+                                  ⚡ Cargar Primeros 6
+                                </button>
+                                {(settingsDraft.homeCollectionProductIds ?? []).length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSettingsDraft((p) => ({ ...p, homeCollectionProductIds: [] }));
+                                      showToast("Selección de colecciones limpiada");
+                                    }}
+                                    className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-colors border border-white/10"
+                                  >
+                                    Limpiar
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Lista visual de las 6 posiciones fijas */}
+                            <div>
+                              <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block mb-2">
+                                Vista previa de los 6 productos iniciales para móvil:
+                              </span>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                                {Array.from({ length: 6 }).map((_, slotIdx) => {
+                                  const prodId = (settingsDraft.homeCollectionProductIds ?? [])[slotIdx];
+                                  const prod = prodId ? products.find((p) => p.id === prodId) : null;
+
+                                  if (!prod) {
+                                    return (
+                                      <div
+                                        key={slotIdx}
+                                        className="h-28 rounded-xl border border-dashed border-white/10 bg-black/20 p-2 flex flex-col items-center justify-center text-center"
+                                      >
+                                        <span className="text-[10px] font-black text-gray-500 mb-1">Posición #{slotIdx + 1}</span>
+                                        <span className="text-[10px] text-gray-500 italic">Espacio disponible</span>
+                                      </div>
+                                    );
+                                  }
+
+                                  return (
+                                    <div
+                                      key={prod.id}
+                                      className="rounded-xl border border-white/10 bg-[#12121d] p-2 flex flex-col justify-between shadow relative group"
+                                    >
+                                      <div>
+                                        <div className="relative aspect-square w-full rounded-lg overflow-hidden bg-black mb-1.5">
+                                          {prod.image ? (
+                                            <img src={prod.image} alt={prod.name} className="w-full h-full object-cover" />
+                                          ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-white/5">
+                                              <Package size={16} className="text-gray-500" />
+                                            </div>
+                                          )}
+                                          <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-[#ffd025] text-black text-[9px] font-black rounded">
+                                            #{slotIdx + 1}
+                                          </span>
+                                        </div>
+                                        <p className="text-[11px] font-bold text-white line-clamp-1 leading-tight">{prod.name}</p>
+                                        <p className="text-[10px] text-[#ffd025] font-black">
+                                          ${Number(prod.price || 0).toLocaleString("es-CL")}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-white/10">
+                                        <div className="flex items-center gap-1">
+                                          {slotIdx > 0 && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                const list = [...(settingsDraft.homeCollectionProductIds ?? [])];
+                                                const tmp = list[slotIdx];
+                                                list[slotIdx] = list[slotIdx - 1]!;
+                                                list[slotIdx - 1] = tmp!;
+                                                setSettingsDraft((p) => ({ ...p, homeCollectionProductIds: list }));
+                                              }}
+                                              className="p-0.5 text-gray-400 hover:text-white"
+                                              title="Mover a posición anterior"
+                                            >
+                                              <ArrowLeft size={12} />
+                                            </button>
+                                          )}
+                                          {slotIdx < (settingsDraft.homeCollectionProductIds ?? []).length - 1 && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                const list = [...(settingsDraft.homeCollectionProductIds ?? [])];
+                                                const tmp = list[slotIdx];
+                                                list[slotIdx] = list[slotIdx + 1]!;
+                                                list[slotIdx + 1] = tmp!;
+                                                setSettingsDraft((p) => ({ ...p, homeCollectionProductIds: list }));
+                                              }}
+                                              className="p-0.5 text-gray-400 hover:text-white"
+                                              title="Mover a posición siguiente"
+                                            >
+                                              <ChevronRight size={12} />
+                                            </button>
+                                          )}
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setSettingsDraft((p) => ({
+                                              ...p,
+                                              homeCollectionProductIds: (p.homeCollectionProductIds ?? []).filter((x) => x !== prod.id),
+                                            }));
+                                          }}
+                                          className="p-0.5 text-red-400 hover:text-red-300"
+                                          title="Quitar de la colección inicial"
+                                        >
+                                          <X size={13} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Buscador de catálogo para añadir a Colecciones */}
+                            <div className="pt-2 border-t border-white/5 space-y-2">
+                              <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block">
+                                Buscar y añadir productos a los 6 iniciales:
+                              </span>
+                              <input
+                                type="text"
+                                value={featuredCollecSearch}
+                                onChange={(e) => setFeaturedCollecSearch(e.target.value)}
+                                placeholder="Filtrar por nombre, categoría, pasillo..."
+                                className="w-full bg-[#12121d] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:border-[#ffd025]"
+                              />
+                              <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1">
+                                {products
+                                  .filter((p) => !p.hidden)
+                                  .filter((p) => {
+                                    if (!featuredCollecSearch.trim()) return true;
+                                    const q = featuredCollecSearch.toLowerCase();
+                                    return (
+                                      p.name.toLowerCase().includes(q) ||
+                                      (p.category && p.category.toLowerCase().includes(q)) ||
+                                      (p.aisle && p.aisle.toLowerCase().includes(q))
+                                    );
+                                  })
+                                  .slice(0, 30)
+                                  .map((product) => {
+                                    const isSelected = (settingsDraft.homeCollectionProductIds ?? []).includes(product.id);
+                                    const isFull = (settingsDraft.homeCollectionProductIds ?? []).length >= 6;
+                                    return (
+                                      <div
+                                        key={product.id}
+                                        className={`flex items-center justify-between p-2 rounded-xl border transition-all ${
+                                          isSelected
+                                            ? "bg-cyan-500/10 border-cyan-500/30 text-white"
+                                            : "bg-[#141420] border-white/5 text-gray-300 hover:border-white/15"
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                          {product.image ? (
+                                            <img
+                                              src={product.image}
+                                              alt={product.name}
+                                              className="w-8 h-8 object-cover rounded-lg bg-black shrink-0 border border-white/10"
+                                            />
+                                          ) : (
+                                            <div className="w-8 h-8 bg-white/5 rounded-lg flex items-center justify-center shrink-0">
+                                              <Package size={14} className="text-gray-500" />
+                                            </div>
+                                          )}
+                                          <div className="min-w-0">
+                                            <p className="text-xs font-bold text-white truncate">{product.name}</p>
+                                            <p className="text-[10px] text-gray-400">
+                                              ${Number(product.price || 0).toLocaleString("es-CL")} · {product.aisle || product.category}
+                                            </p>
+                                          </div>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          disabled={!isSelected && isFull}
+                                          onClick={() => {
+                                            if (isSelected) {
+                                              setSettingsDraft((p) => ({
+                                                ...p,
+                                                homeCollectionProductIds: (p.homeCollectionProductIds ?? []).filter((x) => x !== product.id),
+                                              }));
+                                            } else {
+                                              if (isFull) {
+                                                showToast("Ya alcanzaste el máximo de 6 productos");
+                                                return;
+                                              }
+                                              setSettingsDraft((p) => ({
+                                                ...p,
+                                                homeCollectionProductIds: [...(p.homeCollectionProductIds ?? []), product.id],
+                                              }));
+                                              showToast(`"${product.name}" agregado a los 6 iniciales`);
+                                            }
+                                          }}
+                                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
+                                            isSelected
+                                              ? "bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30"
+                                              : isFull
+                                              ? "bg-white/5 text-gray-500 cursor-not-allowed border border-white/5"
+                                              : "bg-[#ffd025] text-black font-black hover:bg-[#e5b81a]"
+                                          }`}
+                                        >
+                                          {isSelected ? "Quitar" : isFull ? "Límite 6 alcanzado" : "+ Añadir a Colección"}
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            </div>
                           </div>
 
                           <div className="flex justify-end pt-2">
@@ -3906,7 +5231,7 @@ export default function Storefront() {
                     </div>
                   )}
 
-                  {/* SECCIÓN 4: Zonas de Delivery */}
+                  {/* SECCIÓN 5: Zonas de Delivery */}
                   {(settingsSubTab === "all" || settingsSubTab === "delivery") && (
                     <div className="bg-[#13131f]/90 backdrop-blur-2xl rounded-3xl border border-white/10 overflow-hidden shadow-xl shadow-black/50 transition-all">
                       <button
@@ -3920,7 +5245,7 @@ export default function Storefront() {
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="font-black text-white text-base uppercase">Paso 4: Zonas y Tarifas de Delivery</span>
+                              <span className="font-black text-white text-base uppercase">Paso 5: Zonas y Tarifas de Delivery</span>
                               <span className="text-[10px] bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
                                 Despacho
                               </span>
@@ -3955,7 +5280,7 @@ export default function Storefront() {
                     </div>
                   )}
 
-                  {/* SECCIÓN 5: Horarios de Atención y Mínimo */}
+                  {/* SECCIÓN 6: Horarios de Atención y Mínimo */}
                   {(settingsSubTab === "all" || settingsSubTab === "hours") && (
                     <div className="bg-[#13131f]/90 backdrop-blur-2xl rounded-3xl border border-white/10 overflow-hidden shadow-xl shadow-black/50 transition-all">
                       <button
@@ -3969,7 +5294,7 @@ export default function Storefront() {
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="font-black text-white text-base uppercase">Paso 5: Horario de Recepción y Mínimo</span>
+                              <span className="font-black text-white text-base uppercase">Paso 6: Horario de Recepción y Mínimo</span>
                               <span className="text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">
                                 {settingsDraft.openTime ?? "11:00"} - {settingsDraft.closeTime ?? "23:00"}
                               </span>
@@ -4050,7 +5375,7 @@ export default function Storefront() {
                     </div>
                   )}
 
-                  {/* SECCIÓN 6: Modo Contingencia */}
+                  {/* SECCIÓN 7: Modo Contingencia */}
                   {(settingsSubTab === "all" || settingsSubTab === "contingency") && (
                     <div className="bg-[#13131f]/90 backdrop-blur-2xl rounded-3xl border border-white/10 overflow-hidden shadow-xl shadow-black/50 transition-all">
                       <button
@@ -4064,7 +5389,7 @@ export default function Storefront() {
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="font-black text-white text-base uppercase">Paso 6: Modo Contingencia (Catálogo Reducido)</span>
+                              <span className="font-black text-white text-base uppercase">Paso 7: Modo Contingencia (Catálogo Reducido)</span>
                               <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
                                 settingsDraft.contingencyMode
                                   ? "bg-red-500/20 text-red-300 border-red-500/40"
@@ -4266,7 +5591,7 @@ export default function Storefront() {
                     </div>
                   )}
 
-                  {/* SECCIÓN 7: Contacto, Redes & Créditos */}
+                  {/* SECCIÓN 8: Contacto, Redes & Créditos */}
                   {(settingsSubTab === "all" || settingsSubTab === "contact") && (
                     <div className="bg-[#13131f]/90 backdrop-blur-2xl rounded-3xl border border-white/10 overflow-hidden shadow-xl shadow-black/50 transition-all">
                       <button
@@ -4280,7 +5605,7 @@ export default function Storefront() {
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="font-black text-white text-base uppercase">Paso 7: Contacto, WhatsApp & Créditos</span>
+                              <span className="font-black text-white text-base uppercase">Paso 8: Contacto, WhatsApp & Créditos</span>
                               <span className="text-[10px] bg-blue-500/15 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full font-bold">
                                 {settingsDraft.contactPhone ? "Listo" : "Incompleto"}
                               </span>
@@ -4341,6 +5666,131 @@ export default function Storefront() {
                             />
                           </div>
 
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-white/5">
+                            <div>
+                              <label className="block text-xs font-bold text-gray-400 uppercase mb-2">
+                                Logo del Pie de Página (URL)
+                              </label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  value={settingsDraft.footerLogo ?? ""}
+                                  onChange={(e) =>
+                                    setSettingsDraft({ ...settingsDraft, footerLogo: e.target.value })
+                                  }
+                                  className="flex-1 bg-[#181826] border border-white/10 rounded-xl p-3 text-white focus:border-[#ffd025] text-sm"
+                                  placeholder="URL del logo"
+                                />
+                                <label className="bg-[#ffd025]/10 text-[#ffd025] px-3.5 rounded-xl flex items-center justify-center cursor-pointer hover:bg-[#ffd025]/20 border border-[#ffd025]/30">
+                                  <Upload size={18} />
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) =>
+                                      handleImageUpload(e, (url) =>
+                                        setSettingsDraft({ ...settingsDraft, footerLogo: url }),
+                                      )
+                                    }
+                                  />
+                                </label>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-gray-400 uppercase mb-2">
+                                Pequeña Descripción para el Pie de Página
+                              </label>
+                              <input
+                                type="text"
+                                value={settingsDraft.footerDescription ?? ""}
+                                onChange={(e) =>
+                                  setSettingsDraft({ ...settingsDraft, footerDescription: e.target.value })
+                                }
+                                className="w-full bg-[#181826] border border-white/10 rounded-xl p-3 text-white focus:border-[#ffd025] text-sm"
+                                placeholder="Tu botillería de confianza..."
+                              />
+                            </div>
+                          </div>
+
+                          <div className="pt-3 border-t border-white/5 space-y-3">
+                            <h4 className="text-xs font-black uppercase text-[#ffd025] tracking-wider">Redes Sociales (URLs)</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                              <div>
+                                <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Instagram URL</label>
+                                <input
+                                  type="text"
+                                  value={settingsDraft.socialInstagram ?? ""}
+                                  onChange={(e) => setSettingsDraft({ ...settingsDraft, socialInstagram: e.target.value })}
+                                  className="w-full bg-[#181826] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#ffd025]"
+                                  placeholder="https://instagram.com/..."
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Facebook URL</label>
+                                <input
+                                  type="text"
+                                  value={settingsDraft.socialFacebook ?? ""}
+                                  onChange={(e) => setSettingsDraft({ ...settingsDraft, socialFacebook: e.target.value })}
+                                  className="w-full bg-[#181826] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#ffd025]"
+                                  placeholder="https://facebook.com/..."
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">TikTok URL</label>
+                                <input
+                                  type="text"
+                                  value={settingsDraft.socialTiktok ?? ""}
+                                  onChange={(e) => setSettingsDraft({ ...settingsDraft, socialTiktok: e.target.value })}
+                                  className="w-full bg-[#181826] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#ffd025]"
+                                  placeholder="https://tiktok.com/@..."
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">WhatsApp URL / Número</label>
+                                <input
+                                  type="text"
+                                  value={settingsDraft.socialWhatsapp ?? ""}
+                                  onChange={(e) => setSettingsDraft({ ...settingsDraft, socialWhatsapp: e.target.value })}
+                                  className="w-full bg-[#181826] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#ffd025]"
+                                  placeholder="56912345678"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="pt-3 border-t border-white/5 space-y-2 mt-3">
+                              <h5 className="text-[11px] font-black uppercase text-amber-400 tracking-wider flex items-center gap-1.5">
+                                <span>⭐</span> Configuración Reseñas Google Maps
+                              </h5>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Google Place ID (Opcional)</label>
+                                  <input
+                                    type="text"
+                                    value={settingsDraft.googleMapsPlaceId ?? ""}
+                                    onChange={(e) => setSettingsDraft({ ...settingsDraft, googleMapsPlaceId: e.target.value })}
+                                    className="w-full bg-[#181826] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#ffd025]"
+                                    placeholder="Ej: ChIJN1t_tDeuEmsRUsoyG83frY4"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Calificación Promedio (Ej: 4.9)</label>
+                                  <input
+                                    type="number"
+                                    step="0.1"
+                                    max="5"
+                                    min="1"
+                                    value={settingsDraft.googleMapsRating ?? 4.9}
+                                    onChange={(e) => setSettingsDraft({ ...settingsDraft, googleMapsRating: Number(e.target.value) })}
+                                    className="w-full bg-[#181826] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#ffd025]"
+                                  />
+                                </div>
+                              </div>
+                              <p className="text-[10px] text-gray-500">
+                                Se mostrarán las reseñas verificadas de Google Maps de forma automática antes del pie de página.
+                              </p>
+                            </div>
+                          </div>
+
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/5">
                             <div>
                               <label className="block text-xs font-bold text-gray-400 uppercase mb-2">
@@ -4388,6 +5838,28 @@ export default function Storefront() {
                                     }
                                   />
                                 </label>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Sistema Anti-Inactividad Keep-Alive Activo */}
+                          <div className="pt-4 border-t border-white/5">
+                            <div className="bg-[#12121d] border border-emerald-500/30 rounded-2xl p-4 flex items-center gap-3.5">
+                              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-black uppercase text-emerald-300">
+                                    Sistema Keep-Alive 24/7 Activo
+                                  </span>
+                                  <span className="text-[9.5px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-bold">
+                                    Anti-Hibernación Render
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-gray-400 mt-0.5 leading-snug">
+                                  El servidor ejecuta un pulso continuo cada 4 minutos y auto-sincroniza la base de datos en disco para evitar que la página se suspenda o pierda información en planes gratuitos.
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -5586,17 +7058,31 @@ export default function Storefront() {
                         </h2>
 
                         {!isWizardOpen && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              cancelEditing();
-                              setShowAddProductModal(true);
-                              setProductWizardStep(1);
-                            }}
-                            className="px-4 py-2 bg-gradient-to-r from-[#ffd025] to-[#e6b800] text-[#141414] rounded-xl font-black text-xs uppercase flex items-center gap-1.5 shadow-md shadow-[#ffd025]/20 hover:scale-[1.02] transition-all"
-                          >
-                            <Plus size={15} /> + Nuevo Producto
-                          </button>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                cancelEditing();
+                                setShowAddProductModal(true);
+                                setProductWizardStep(1);
+                              }}
+                              className="px-4 py-2 bg-gradient-to-r from-[#ffd025] to-[#e6b800] text-[#141414] rounded-xl font-black text-xs uppercase flex items-center gap-1.5 shadow-md shadow-[#ffd025]/20 hover:scale-[1.02] transition-all"
+                            >
+                              <Plus size={15} /> + Nuevo Producto
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAdminTab("settings");
+                                setSettingsSubTab("featured");
+                                setOpenSettingsSections((p) => ({ ...p, featured: true }));
+                              }}
+                              className="px-3.5 py-2 bg-[#ffd025]/15 border border-[#ffd025]/30 text-[#ffd025] hover:bg-[#ffd025]/25 rounded-xl font-bold text-xs uppercase flex items-center gap-1.5 transition-all"
+                              title="Seleccionar productos de Promociones y Colecciones de Celular"
+                            >
+                              <Star size={14} /> Destacados & Colecciones
+                            </button>
+                          </div>
                         )}
 
                         {/* View Switcher: Grid vs Table */}

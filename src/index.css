@@ -102,4 +102,50 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+
+  /* Barra de deslizamiento (Scrollbar) personalizada de alta gama para toda la app y panel admin */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #101017;
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 208, 37, 0.4);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 208, 37, 0.2);
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #ffd025;
+    box-shadow: 0 0 8px rgba(255, 208, 37, 0.5);
+  }
+
+  /* Admin sidebar & menu custom slim scrollbar */
+  .custom-admin-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  .custom-admin-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-admin-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 208, 37, 0.3);
+    border-radius: 9999px;
+  }
+  .custom-admin-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #ffd025;
+  }
+
+  /* Compatibilidad Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 208, 37, 0.35) #101017;
+  }
+  .custom-admin-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 208, 37, 0.3) transparent;
+  }
 }

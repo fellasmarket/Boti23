@@ -18,6 +18,7 @@ export interface Setting {
   logo: string;
   pageTitle: string;
   favicon: string;
+  topAnnouncementText?: string;
   bannerText: string;
   bannerDescription: string;
   bannerImage: string;
@@ -34,6 +35,27 @@ export interface Setting {
   deliveryMinimum: number;
   contingencyMode?: boolean;
   contingencyMessage?: string;
+  promoBannerImage?: string;
+  aislesBannerImage?: string;
+  homeCollectionProductIds?: number[];
+  recommendedProductIds?: number[];
+  footerLogo?: string;
+  footerDescription?: string;
+  socialInstagram?: string;
+  socialFacebook?: string;
+  socialTiktok?: string;
+  socialWhatsapp?: string;
+  googleMapsPlaceId?: string;
+  googleMapsRating?: number;
+  googleMapsReviewsCount?: number;
+  googleMapsReviews?: Array<{
+    id: string;
+    author_name: string;
+    author_photo?: string;
+    rating: number;
+    relative_time_description: string;
+    text: string;
+  }>;
 }
 
 export interface Category {
@@ -172,6 +194,7 @@ const DEFAULT_DB: DatabaseSchema = {
     logo: "",
     pageTitle: "FELLAS",
     favicon: "/favicon.svg",
+    topAnnouncementText: "PIDE ANTES DE LAS 8:00 AM Y RECIBE EL MISMO DÍA (VER COMUNAS)",
     bannerText: "🍻 ¡BIENVENIDO A FELLA'S MARKET ALERCE! 🍾",
     bannerDescription: "Tu botillería y minimarket de confianza. Cervezas heladas, destilados, vinos, snacks y delivery rápido a todo Alerce y Puerto Montt.",
     bannerImage: "/src/assets/banner.png",
@@ -208,6 +231,53 @@ const DEFAULT_DB: DatabaseSchema = {
     deliveryMinimum: 5000,
     contingencyMode: false,
     contingencyMessage: "🚨 MODO CONTINGENCIA: Por alta demanda o motivos de fuerza mayor, la recepción de pedidos web se encuentra pausada temporalmente. Por favor consulta por WhatsApp.",
+    promoBannerImage: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=1600&auto=format&fit=crop&q=80",
+    aislesBannerImage: "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=1600&auto=format&fit=crop&q=80",
+    homeCollectionProductIds: [1, 2, 3, 4, 5, 6],
+    recommendedProductIds: [1, 2, 3, 4],
+    footerLogo: "",
+    footerDescription: "Tu botillería y minimarket de confianza con despacho rápido a domicilio.",
+    socialInstagram: "https://instagram.com",
+    socialFacebook: "",
+    socialTiktok: "",
+    socialWhatsapp: "",
+    googleMapsPlaceId: "",
+    googleMapsRating: 4.9,
+    googleMapsReviewsCount: 142,
+    googleMapsReviews: [
+      {
+        id: "g-1",
+        author_name: "Carlos Soto",
+        author_photo: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
+        rating: 5,
+        relative_time_description: "Hace 2 días",
+        text: "¡Excelente atención y las cervezas siempre llegan ultra heladas! El delivery es súper rápido en Alerce. 100% recomendado."
+      },
+      {
+        id: "g-2",
+        author_name: "Valentina Muñoz",
+        author_photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120",
+        rating: 5,
+        relative_time_description: "Hace una semana",
+        text: "Salvaron nuestra junta de amigos un domingo a medianoche. Tienen de todo y el hielo nunca falta. ¡Geniales!"
+      },
+      {
+        id: "g-3",
+        author_name: "Matías Alarcón",
+        author_photo: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=120",
+        rating: 5,
+        relative_time_description: "Hace 2 semanas",
+        text: "Muy buena variedad de destilados y snacks. Los precios son justos y la página web es súper fácil de usar."
+      },
+      {
+        id: "g-4",
+        author_name: "Camila Fernández",
+        author_photo: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=120",
+        rating: 5,
+        relative_time_description: "Hace 3 semanas",
+        text: "Pedimos por WhatsApp y la entrega llegó en 20 minutos exacta. Todo muy bien empaquetado y los tragos heladísimos. Se pasaron."
+      }
+    ],
   },
   categories: [
     { id: 1, name: "Cervezas", position: 0 },
