@@ -670,6 +670,7 @@ export default function Storefront() {
   const [adminCategory, setAdminCategory] = useState<string>("Todas");
   const [adminProductSearch, setAdminProductSearch] = useState<string>("");
   const [contingencyProductSearch, setContingencyProductSearch] = useState<string>("");
+  const [aisleSearchQueries, setAisleSearchQueries] = useState<Record<string, string>>({});
   const [contingencyStatusFilter, setContingencyStatusFilter] = useState<"all" | "active" | "inactive">("all");
 
   const toggleProductContingency = (prod: Product) => {
@@ -7619,17 +7620,17 @@ export default function Storefront() {
                       const isEnabled = aisleConfig.enabled !== false;
                       const allAisleProds = products.filter((p) => p.aisle === aisleName || p.category === aisleName);
                       
+                      const aisleQuery = aisleSearchQueries[aisleName] || "";
                       const filteredAisleProducts = allAisleProds.filter((p) => {
                         if (contingencyStatusFilter === "active" && p.contingencyEnabled === false) return false;
                         if (contingencyStatusFilter === "inactive" && p.contingencyEnabled !== false) return false;
                         if (contingencyProductSearch.trim()) {
                           const q = normalize(contingencyProductSearch.trim());
-                          return (
-                            normalize(p.name).includes(q) ||
-                            normalize(p.category || "").includes(q) ||
-                            normalize(p.aisle || "").includes(q) ||
-                            normalize(p.subcategory || "").includes(q)
-                          );
+                          if (!normalize(p.name).includes(q) && !normalize(p.category || "").includes(q) && !normalize(p.aisle || "").includes(q)) return false;
+                        }
+                        if (aisleQuery.trim()) {
+                          const q = normalize(aisleQuery.trim());
+                          if (!normalize(p.name).includes(q) && !normalize(p.category || "").includes(q) && !normalize(p.subcategory || "").includes(q)) return false;
                         }
                         return true;
                       });
@@ -7745,6 +7746,29 @@ export default function Storefront() {
                                       />
                                     </label>
                                   </div>
+                                </div>
+                              </div>
+
+                              {/* Barra de búsqueda específica de este pasillo */}
+                              <div className="pt-2">
+                                <div className="relative">
+                                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                  <input
+                                    type="text"
+                                    value={aisleSearchQueries[aisleName] || ""}
+                                    onChange={(e) => setAisleSearchQueries({ ...aisleSearchQueries, [aisleName]: e.target.value })}
+                                    placeholder={`🔍 Filtrar en "${aisleName}"...`}
+                                    className="w-full bg-[#12121d] border border-white/10 rounded-xl pl-8 pr-7 py-2 text-white text-xs focus:border-[#ffd025] focus:outline-none placeholder-gray-500"
+                                  />
+                                  {aisleSearchQueries[aisleName] && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setAisleSearchQueries({ ...aisleSearchQueries, [aisleName]: "" })}
+                                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                                    >
+                                      <X size={12} />
+                                    </button>
+                                  )}
                                 </div>
                               </div>
 
