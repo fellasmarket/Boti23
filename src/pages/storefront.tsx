@@ -2708,18 +2708,8 @@ export default function Storefront() {
 
       {view === "client" && (
         <div className="pt-[76px] sm:pt-[84px]">
-        {/* Contingency or Business hours banner */}
-        {settings.contingencyMode ? (
-          <div className="bg-[#2a0808] border-b border-red-600/50 px-4 py-3">
-            <div className="w-full px-3 sm:px-6 md:px-8 flex items-start gap-3">
-              <span className="text-red-400 text-base leading-none mt-0.5 flex-shrink-0">🚨</span>
-              <p className="text-[13px] text-red-200 leading-snug">
-                <span className="font-bold">MODO CONTINGENCIA ACTIVO:</span>{" "}
-                {settings.contingencyMessage || "La tienda se encuentra operando con catálogo reducido de contingencia temporalmente."}
-              </p>
-            </div>
-          </div>
-        ) : !isStoreOpen && (
+        {/* Business hours banner (contingency banner is admin-only, hidden from clients) */}
+        {!isStoreOpen && (
           <div className="bg-[#1a0f00] border-b border-amber-600/40 px-4 py-3">
             <div className="w-full px-3 sm:px-6 md:px-8 flex items-start gap-3">
               <span className="text-amber-400 text-base leading-none mt-0.5 flex-shrink-0">🕐</span>
@@ -3335,7 +3325,7 @@ export default function Storefront() {
 
                       {/* VERSIÓN PARA CELULAR (MOBILE): Primera vista de 6 productos + Botón de Ver más */}
                       <div className="md:hidden">
-                        <div className="grid grid-cols-3 gap-x-1.5 xs:gap-x-2 gap-y-4 xs:gap-y-5 items-stretch w-full">
+                        <div className="grid grid-cols-2 xs:grid-cols-3 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full">
                           {homeCollectionProducts.map((product) => (
                             <div
                               key={product.id}
