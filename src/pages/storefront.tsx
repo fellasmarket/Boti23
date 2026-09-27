@@ -55,10 +55,20 @@ declare module "@workspace/api-client-react" {
     topAnnouncementText?: string;
     contingencyMode?: boolean;
     contingencyMessage?: string;
+    contingencyBannerImage?: string;
+    contingencyAislesConfig?: Record<string, { enabled?: boolean; bannerImage?: string; noticeText?: string; productIds?: number[] }>;
     promoBannerImage?: string;
     aislesBannerImage?: string;
     homeCollectionProductIds?: number[];
     recommendedProductIds?: number[];
+    opportunitiesBannerImage?: string;
+    opportunitiesBannerTitle?: string;
+    opportunitiesBannerSubtitle?: string;
+    opportunitiesProductIds?: number[];
+    packsBannerImage?: string;
+    packsBannerTitle?: string;
+    packsBannerSubtitle?: string;
+    packsProductIds?: number[];
     footerLogo?: string;
     footerDescription?: string;
     socialInstagram?: string;
@@ -152,6 +162,7 @@ import {
   ArrowLeft,
   Star,
   LogIn,
+  AlertTriangle,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -538,6 +549,7 @@ export default function Storefront() {
   const [selectedComuna, setSelectedComuna] = useState("Santiago");
   const [activeAnnouncementIdx, setActiveAnnouncementIdx] = useState(0);
   const [showDedicatedProductsPage, setShowDedicatedProductsPage] = useState(false);
+  const [dedicatedViewMode, setDedicatedViewMode] = useState<"catalog" | "oportunidades" | "packs">("catalog");
 
   const headerAnnouncements = useMemo(() => {
     if (settings.announcements && Array.isArray(settings.announcements) && settings.announcements.length > 0) {
@@ -577,7 +589,7 @@ export default function Storefront() {
     { product: Product; selectedOption: string } | null
   >(null);
   const [adminTab, setAdminTab] =
-    useState<"products" | "classifications" | "orders" | "stats" | "settings" | "social" | "customers">("products");
+    useState<"products" | "classifications" | "orders" | "stats" | "settings" | "social" | "customers" | "contingency">("products");
   const [adminRole, setAdminRole] = useState<"full" | "delivery" | null>(null);
   const [adminMobileMenuOpen, setAdminMobileMenuOpen] = useState(false);
   const [customerToken, setCustomerToken] = useState<string | null>(() => {
@@ -683,6 +695,8 @@ export default function Storefront() {
   });
   const [featuredRecoSearch, setFeaturedRecoSearch] = useState("");
   const [featuredCollecSearch, setFeaturedCollecSearch] = useState("");
+  const [featuredOportunidadesSearch, setFeaturedOportunidadesSearch] = useState("");
+  const [featuredPacksSearch, setFeaturedPacksSearch] = useState("");
   const toggleSettingsSection = (sec: string) => {
     setOpenSettingsSections((p) => ({ ...p, [sec]: !p[sec] }));
   };
@@ -891,10 +905,18 @@ export default function Storefront() {
 
   const baseProducts = useMemo(() => {
     if (!settings.contingencyMode) return products;
-    const contingencyProds = products.filter((p) => p.contingencyEnabled && !p.hidden);
-    if (contingencyProds.length > 0) return contingencyProds.slice(0, 30);
-    return products.filter((p) => !p.hidden).slice(0, 30);
-  }, [products, settings.contingencyMode]);
+    const contingencyAisles = settings.contingencyAislesConfig || {};
+    const filtered = products.filter((p) => {
+      if (p.hidden) return false;
+      const aisleKey = p.aisle || p.category;
+      if (contingencyAisles[aisleKey] && contingencyAisles[aisleKey].enabled === false) {
+        return false;
+      }
+      return p.contingencyEnabled !== false;
+    });
+    if (filtered.length > 0) return filtered;
+    return products.filter((p) => !p.hidden);
+  }, [products, settings.contingencyMode, settings.contingencyAislesConfig]);
 
   const filteredProducts = useMemo(() => {
     if (debouncedSearch) {
@@ -941,6 +963,43 @@ export default function Storefront() {
     }
     return filteredProducts.slice(0, 6);
   }, [baseProducts, filteredProducts, settings.homeCollectionProductIds]);
+
+  const opportunitiesCustomProducts = useMemo(() => {
+    const customIds = settings.opportunitiesProductIds ?? [];
+    if (customIds.length > 0) {
+      const selected = customIds
+        .map((id) => baseProducts.find((p) => p.id === id && !p.hidden))
+        .filter((p): p is Product => Boolean(p));
+      if (selected.length > 0) return selected;
+    }
+    const candidates = baseProducts.filter(
+      (p) => !p.hidden && (p.oferta || p.bestseller)
+    );
+    if (candidates.length > 0) return candidates;
+    return baseProducts.filter((p) => !p.hidden).slice(0, 12);
+  }, [baseProducts, settings.opportunitiesProductIds]);
+
+  const packsCustomProducts = useMemo(() => {
+    const customIds = settings.packsProductIds ?? [];
+    if (customIds.length > 0) {
+      const selected = customIds
+        .map((id) => baseProducts.find((p) => p.id === id && !p.hidden))
+        .filter((p): p is Product => Boolean(p));
+      if (selected.length > 0) return selected;
+    }
+    const candidates = baseProducts.filter(
+      (p) =>
+        !p.hidden &&
+        (p.category?.toLowerCase().includes("pack") ||
+          p.subcategory?.toLowerCase().includes("pack") ||
+          p.aisle?.toLowerCase().includes("pack") ||
+          p.name.toLowerCase().includes("pack") ||
+          p.name.toLowerCase().includes("combo") ||
+          p.name.toLowerCase().includes("promocion"))
+    );
+    if (candidates.length > 0) return candidates;
+    return baseProducts.filter((p) => !p.hidden).slice(0, 12);
+  }, [baseProducts, settings.packsProductIds]);
 
   const groupedByAisle = useMemo(
     () =>
@@ -1895,15 +1954,62 @@ export default function Storefront() {
             {/* Pasillos & Categorías list */}
             <div className="flex-1 space-y-4">
               <p className="text-[11px] font-black uppercase text-[#ffd025] tracking-widest">Navegación de Pasillos</p>
+              
+              {/* Pestañas Especiales Oportunidades & Packs en Móvil */}
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setActiveCategory("");
+                    setActiveAisle("");
+                    setNavQuickFilter("");
+                    setShowDedicatedProductsPage(true);
+                    setDedicatedViewMode("oportunidades");
+                    setMobileNavDrawerOpen(false);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className={`px-3 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 border ${
+                    showDedicatedProductsPage && dedicatedViewMode === "oportunidades"
+                      ? "bg-amber-400 text-black border-amber-400 shadow"
+                      : "bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20"
+                  }`}
+                >
+                  <span>OPORTUNIDADES</span>
+                  <span>⏰</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setActiveCategory("");
+                    setActiveAisle("");
+                    setNavQuickFilter("");
+                    setShowDedicatedProductsPage(true);
+                    setDedicatedViewMode("packs");
+                    setMobileNavDrawerOpen(false);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className={`px-3 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 border ${
+                    showDedicatedProductsPage && dedicatedViewMode === "packs"
+                      ? "bg-amber-400 text-black border-amber-400 shadow"
+                      : "bg-purple-500/10 text-purple-300 border-purple-500/30 hover:bg-purple-500/20"
+                  }`}
+                >
+                  <span>PACKS</span>
+                  <span>🎁</span>
+                </button>
+              </div>
+
               <div className="space-y-1">
                 <button
                   onClick={() => {
                     setActiveCategory("");
                     setActiveAisle("");
+                    setShowDedicatedProductsPage(false);
+                    setDedicatedViewMode("catalog");
                     setMobileNavDrawerOpen(false);
                   }}
                   className={`w-full text-left px-3.5 py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-between ${
-                    !activeCategory && !activeAisle ? "bg-[#ffd025] text-black" : "text-gray-300 hover:bg-white/5"
+                    !showDedicatedProductsPage && !activeCategory && !activeAisle ? "bg-[#ffd025] text-black" : "text-gray-300 hover:bg-white/5"
                   }`}
                 >
                   <span>Todos los productos</span>
@@ -1981,7 +2087,7 @@ export default function Storefront() {
 
           {/* BARRA PRINCIPAL (5/6): División continua con líneas separadoras/divisorias verticales */}
           <div className="w-full bg-black border-b border-white/20">
-            <div className="max-w-[1500px] mx-auto flex items-stretch h-12 sm:h-14 px-1.5 sm:px-4">
+            <div className="w-full flex items-stretch h-12 sm:h-14 px-2 sm:px-6 md:px-8 lg:px-10">
               
               {/* 1. SECCIÓN IZQUIERDA: LOGO + CATEGORÍAS (ÍCONO EN MÓVIL) + OPORTUNIDADES + PACKS */}
               <div className="flex items-center gap-2 sm:gap-5 pr-2 sm:pr-6 shrink-0">
@@ -2042,11 +2148,15 @@ export default function Storefront() {
                     setSearchQuery("");
                     setActiveCategory("");
                     setActiveAisle("");
-                    setNavQuickFilter((curr) => (curr === "oportunidades" ? "" : "oportunidades"));
+                    setNavQuickFilter("");
+                    setShowDedicatedProductsPage(true);
+                    setDedicatedViewMode("oportunidades");
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
                   className={`hidden lg:flex items-center gap-1.5 text-xs sm:text-sm font-black tracking-wider uppercase transition-colors shrink-0 ${
-                    navQuickFilter === "oportunidades" ? "text-amber-400" : "text-white hover:text-gray-300"
+                    showDedicatedProductsPage && dedicatedViewMode === "oportunidades"
+                      ? "text-amber-400"
+                      : "text-white hover:text-gray-300"
                   }`}
                   title="Ver oportunidades y ofertas"
                 >
@@ -2060,11 +2170,15 @@ export default function Storefront() {
                     setSearchQuery("");
                     setActiveCategory("");
                     setActiveAisle("");
-                    setNavQuickFilter((curr) => (curr === "packs" ? "" : "packs"));
+                    setNavQuickFilter("");
+                    setShowDedicatedProductsPage(true);
+                    setDedicatedViewMode("packs");
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
                   className={`hidden lg:block text-xs sm:text-sm font-black tracking-wider uppercase transition-colors shrink-0 ${
-                    navQuickFilter === "packs" ? "text-amber-400" : "text-white hover:text-gray-300"
+                    showDedicatedProductsPage && dedicatedViewMode === "packs"
+                      ? "text-amber-400"
+                      : "text-white hover:text-gray-300"
                   }`}
                   title="Ver packs y promociones"
                 >
@@ -2174,16 +2288,56 @@ export default function Storefront() {
                     setActiveCategory("");
                     setActiveAisle("");
                     setNavQuickFilter("");
+                    setShowDedicatedProductsPage(false);
+                    setDedicatedViewMode("catalog");
                     setShowAisleMenu(false);
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
                   className={`text-[10.5px] sm:text-xs uppercase tracking-wider transition-colors whitespace-nowrap shrink-0 py-0.5 ${
-                    !activeCategory && !activeAisle && !navQuickFilter
+                    !activeCategory && !activeAisle && !navQuickFilter && (!showDedicatedProductsPage || dedicatedViewMode === "catalog")
                       ? "text-[#ffd025] font-black"
                       : "text-gray-400 hover:text-white font-semibold"
                   }`}
                 >
                   Todo el catálogo
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveCategory("");
+                    setActiveAisle("");
+                    setNavQuickFilter("");
+                    setShowDedicatedProductsPage(true);
+                    setDedicatedViewMode("oportunidades");
+                    setShowAisleMenu(false);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className={`text-[10.5px] sm:text-xs uppercase tracking-wider transition-colors whitespace-nowrap shrink-0 py-0.5 ${
+                    showDedicatedProductsPage && dedicatedViewMode === "oportunidades"
+                      ? "text-amber-400 font-black"
+                      : "text-amber-300/80 hover:text-amber-300 font-semibold"
+                  }`}
+                >
+                  ⏰ Oportunidades
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveCategory("");
+                    setActiveAisle("");
+                    setNavQuickFilter("");
+                    setShowDedicatedProductsPage(true);
+                    setDedicatedViewMode("packs");
+                    setShowAisleMenu(false);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className={`text-[10.5px] sm:text-xs uppercase tracking-wider transition-colors whitespace-nowrap shrink-0 py-0.5 ${
+                    showDedicatedProductsPage && dedicatedViewMode === "packs"
+                      ? "text-amber-400 font-black"
+                      : "text-amber-300/80 hover:text-amber-300 font-semibold"
+                  }`}
+                >
+                  🎁 Packs
                 </button>
 
                 {allMenuSections.map((item) => {
@@ -2496,7 +2650,7 @@ export default function Storefront() {
         {/* Contingency or Business hours banner */}
         {settings.contingencyMode ? (
           <div className="bg-[#2a0808] border-b border-red-600/50 px-4 py-3">
-            <div className="max-w-6xl mx-auto flex items-start gap-3">
+            <div className="w-full px-3 sm:px-6 md:px-8 flex items-start gap-3">
               <span className="text-red-400 text-base leading-none mt-0.5 flex-shrink-0">🚨</span>
               <p className="text-[13px] text-red-200 leading-snug">
                 <span className="font-bold">MODO CONTINGENCIA ACTIVO:</span>{" "}
@@ -2506,7 +2660,7 @@ export default function Storefront() {
           </div>
         ) : !isStoreOpen && (
           <div className="bg-[#1a0f00] border-b border-amber-600/40 px-4 py-3">
-            <div className="max-w-6xl mx-auto flex items-start gap-3">
+            <div className="w-full px-3 sm:px-6 md:px-8 flex items-start gap-3">
               <span className="text-amber-400 text-base leading-none mt-0.5 flex-shrink-0">🕐</span>
               <p className="text-[13px] text-amber-300 leading-snug">
                 <span className="font-bold">Estamos fuera de nuestro horario de atención.</span>{" "}
@@ -2586,16 +2740,61 @@ export default function Storefront() {
           {/* RENDERIZADO CONDICIONAL: PESTAÑA DEDICADA DE PRODUCTOS vs VISTA PRINCIPAL HOME */}
           {showDedicatedProductsPage && !settings.contingencyMode ? (
             <div className="animate-fade-in pb-4">
-              {/* Banner de Pasillo y Selector de Pasillos (Texto Puro, Sin Rectángulos) */}
-              <div className="max-w-6xl mx-auto px-3 sm:px-4 mt-3 sm:mt-5">
-                <div className="w-full h-14 sm:h-28 md:h-44 overflow-hidden rounded-none border border-white/10 mb-3 bg-black select-none">
+              <div className="w-full px-3 sm:px-6 md:px-8 mt-3 sm:mt-5">
+                {/* Botón Volver a Inicio */}
+                <div className="mb-2 flex items-center justify-between">
+                  <button
+                    onClick={() => {
+                      setShowDedicatedProductsPage(false);
+                      setDedicatedViewMode("catalog");
+                      setActiveAisle("");
+                      setActiveCategory("");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-white transition-colors py-1"
+                  >
+                    <ArrowLeft size={14} /> Volver a Portada
+                  </button>
+                  <span className="text-[10px] font-mono text-[#ffd025] uppercase tracking-wider">
+                    {dedicatedViewMode === "oportunidades" ? "Pestaña Exclusiva Oportunidades" : dedicatedViewMode === "packs" ? "Pestaña Exclusiva Packs" : "Pestaña de Pasillos"}
+                  </span>
+                </div>
+
+                {/* Banner exclusivo de sección */}
+                <div className="relative w-full h-24 sm:h-40 md:h-60 lg:h-72 xl:h-80 overflow-hidden rounded-none border border-white/10 mb-4 bg-black select-none shadow-xl">
                   <img
-                    src={settings.aislesBannerImage || "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=1600&auto=format&fit=crop&q=80"}
-                    alt="Pasillos"
+                    src={
+                      dedicatedViewMode === "oportunidades"
+                        ? (settings.opportunitiesBannerImage || "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=1600&auto=format&fit=crop&q=80")
+                        : dedicatedViewMode === "packs"
+                        ? (settings.packsBannerImage || "https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=1600&auto=format&fit=crop&q=80")
+                        : (settings.aislesBannerImage || "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=1600&auto=format&fit=crop&q=80")
+                    }
+                    alt={
+                      dedicatedViewMode === "oportunidades"
+                        ? "Oportunidades"
+                        : dedicatedViewMode === "packs"
+                        ? "Packs"
+                        : "Pasillos"
+                    }
                     loading="lazy"
                     decoding="async"
-                    className="w-full h-full object-cover rounded-none"
+                    className="w-full h-full object-cover rounded-none brightness-90"
                   />
+                  {(dedicatedViewMode === "oportunidades" || dedicatedViewMode === "packs") && (
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent flex flex-col justify-end p-3 sm:p-6">
+                      <h2 className="text-base sm:text-2xl md:text-3xl font-black uppercase text-[#ffd025] tracking-wider drop-shadow">
+                        {dedicatedViewMode === "oportunidades"
+                          ? (settings.opportunitiesBannerTitle || "⏰ OPORTUNIDADES & OFERTAS FLASH")
+                          : (settings.packsBannerTitle || "🎁 PACKS & PROMOCIONES")}
+                      </h2>
+                      <p className="text-[10.5px] sm:text-xs text-gray-200 line-clamp-2 mt-0.5 max-w-2xl font-medium">
+                        {dedicatedViewMode === "oportunidades"
+                          ? (settings.opportunitiesBannerSubtitle || "Aprovecha descuentos por tiempo limitado y promociones directas de nuestra selección exclusiva")
+                          : (settings.packsBannerSubtitle || "Arma tu previa con los mejores combos y packs de licores y cervezas seleccionados por el equipo")}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Menú de Pasillos en Texto Suelto (Sin Cajas ni Rectángulos, Solo Color al Seleccionar) */}
@@ -2639,26 +2838,47 @@ export default function Storefront() {
                   })}
                 </div>
 
-                {/* Sección Amplia y Dedicada de Productos */}
-                <div className="space-y-10 sm:space-y-12 mb-8">
-                  {activeAisles.map((aisleName) => {
-                    const aisleProducts = groupedByAisle[aisleName] || [];
-                    if (aisleProducts.length === 0) return null;
+                {/* Vista Dedicada de Productos segun Modo */}
+                {(dedicatedViewMode === "oportunidades" || dedicatedViewMode === "packs") ? (() => {
+                  const isOpp = dedicatedViewMode === "oportunidades";
+                  const rawIds = isOpp ? settings.opportunitiesProductIds : settings.packsProductIds;
+                  let selectedList: Product[] = [];
+                  if (rawIds && Array.isArray(rawIds) && rawIds.length > 0) {
+                    selectedList = rawIds
+                      .map((id) => products.find((p) => p.id === id && !p.hidden))
+                      .filter(Boolean) as Product[];
+                  }
+                  if (selectedList.length === 0) {
+                    selectedList = isOpp
+                      ? products.filter((p) => !p.hidden && (p.oferta || p.bestseller || (p.price && p.price < 12000)))
+                      : products.filter((p) => !p.hidden && (p.name.toLowerCase().includes("pack") || p.category?.toLowerCase().includes("pack") || p.aisle?.toLowerCase().includes("pack")));
+                  }
 
-                    return (
-                      <div key={aisleName} id={`aisle-dedicated-${aisleName}`} className="scroll-mt-24">
-                        <div className="flex items-center gap-3 mb-3.5 sm:mb-4">
-                          <h3 className="text-sm sm:text-base font-black uppercase tracking-wider text-[#ffd025]">
-                            {aisleName}
-                          </h3>
-                          <div className="flex-1 border-t border-white/15" />
-                          <span className="text-[10px] text-gray-400 font-semibold uppercase">
-                            {aisleProducts.length} {aisleProducts.length === 1 ? "producto" : "productos"}
-                          </span>
+                  // Aplicar filtro si el usuario hizo clic en un pasillo o categoría del submenú
+                  const finalProducts = selectedList.filter((p) => {
+                    if (activeAisle && p.aisle !== activeAisle) return false;
+                    if (activeCategory && p.category !== activeCategory) return false;
+                    return true;
+                  });
+
+                  return (
+                    <div className="space-y-6 mb-12">
+                      <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                        <span className="text-xs sm:text-sm font-black uppercase text-[#ffd025] tracking-wider">
+                          {isOpp ? "Lista de Productos en Oportunidades" : "Lista de Productos en Packs"}
+                        </span>
+                        <span className="text-[10px] text-gray-400 font-bold uppercase">
+                          {finalProducts.length} {finalProducts.length === 1 ? "producto" : "productos"}
+                        </span>
+                      </div>
+
+                      {finalProducts.length === 0 ? (
+                        <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
+                          <p className="text-xs text-gray-400">No hay productos seleccionados en esta categoría.</p>
                         </div>
-
-                        <div className="grid grid-cols-2 xs:grid-cols-3 md:grid-cols-4 gap-x-2 sm:gap-x-3 md:gap-x-3.5 gap-y-4 xs:gap-y-5 sm:gap-y-6 md:gap-y-8 items-stretch w-full">
-                          {aisleProducts.map((product) => (
+                      ) : (
+                        <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full">
+                          {finalProducts.map((product) => (
                             <div
                               key={product.id}
                               className="group flex flex-col justify-between h-full w-full"
@@ -2684,10 +2904,10 @@ export default function Storefront() {
                                     </div>
                                   )}
 
-                                  {product.oferta && (
+                                  {(product.oferta || isOpp || isOpp) && (
                                     <div className="absolute top-0 left-0 z-10">
-                                      <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
-                                        OFERTA
+                                      <span className={`px-1.5 py-0.5 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow ${isOpp ? "bg-amber-500" : "bg-purple-600"}`}>
+                                        {isOpp ? "OFERTA" : "PACK"}
                                       </span>
                                     </div>
                                   )}
@@ -2732,19 +2952,117 @@ export default function Storefront() {
                             </div>
                           ))}
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      )}
+                    </div>
+                  );
+                })() : (
+                  /* Sección Amplia y Dedicada de Productos por Pasillos (Catalog) */
+                  <div className="space-y-10 sm:space-y-12 mb-8">
+                    {activeAisles.map((aisleName) => {
+                      const aisleProducts = groupedByAisle[aisleName] || [];
+                      if (aisleProducts.length === 0) return null;
+
+                      return (
+                        <div key={aisleName} id={`aisle-dedicated-${aisleName}`} className="scroll-mt-24">
+                          <div className="flex items-center gap-3 mb-3.5 sm:mb-4">
+                            <h3 className="text-sm sm:text-base font-black uppercase tracking-wider text-[#ffd025]">
+                              {aisleName}
+                            </h3>
+                            <div className="flex-1 border-t border-white/15" />
+                            <span className="text-[10px] text-gray-400 font-semibold uppercase">
+                              {aisleProducts.length} {aisleProducts.length === 1 ? "producto" : "productos"}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full">
+                            {aisleProducts.map((product) => (
+                              <div
+                                key={product.id}
+                                className="group flex flex-col justify-between h-full w-full"
+                              >
+                                <div>
+                                  <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1.5 sm:mb-2">
+                                    {product.image ? (
+                                      <img
+                                        src={product.image}
+                                        alt={product.name}
+                                        loading="lazy"
+                                        decoding="async"
+                                        className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300"
+                                        onError={(e) => {
+                                          (e.currentTarget as HTMLImageElement).src =
+                                            "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-none">
+                                        <Package size={20} className="text-[#ffd025]/70" />
+                                        <span className="text-[8px] sm:text-[10px] mt-0.5 font-semibold uppercase">Fellas</span>
+                                      </div>
+                                    )}
+
+                                    {product.oferta && (
+                                      <div className="absolute top-0 left-0 z-10">
+                                        <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
+                                          OFERTA
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="h-3.5 sm:h-4 flex items-center mb-0.5 overflow-hidden">
+                                    {(product.subcategory || product.category || product.aisle) ? (
+                                      <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
+                                        {product.subcategory || product.category || product.aisle}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[7.5px] sm:text-[9px] font-medium uppercase tracking-wider text-transparent select-none">
+                                        -
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <h4
+                                    title={product.name}
+                                    className="text-[9.5px] xs:text-[10px] sm:text-[11.5px] md:text-[12px] font-semibold text-white leading-tight line-clamp-2 h-7 sm:h-8 md:h-8.5 block w-full group-hover:text-[#ffd025] transition-colors"
+                                  >
+                                    {product.name}
+                                  </h4>
+                                </div>
+
+                                <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1">
+                                  <span className="text-[11px] sm:text-xs md:text-sm font-black text-[#ffd025] truncate">
+                                    ${Number(product.price || 0).toLocaleString("es-CL")}
+                                  </span>
+
+                                  <button
+                                    onClick={() => handleAddToCartClick(product)}
+                                    disabled={!isStoreOpen}
+                                    className="h-6 px-1.5 sm:px-2.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 rounded-none hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                                    title="Añadir al carrito"
+                                    aria-label="Añadir al carrito"
+                                  >
+                                    <Plus size={12} strokeWidth={2.5} />
+                                    <span className="hidden sm:inline text-[10px]">Añadir</span>
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           ) : (
             <>
               {/* BANNER PRINCIPAL */}
               {!searchQuery && effectiveSlides.length > 0 && (
-                <div className="max-w-6xl mx-auto px-3 sm:px-4 mt-3 sm:mt-6">
+                <div className="w-full px-3 sm:px-6 md:px-8 mt-3 sm:mt-6">
                   <div
-                    className="relative w-full h-32 sm:h-48 md:h-80 shadow-lg border border-white/10 bg-black select-none rounded-xl sm:rounded-2xl overflow-hidden"
+                    className="relative w-full h-36 sm:h-48 md:h-64 lg:h-[280px] xl:h-[320px] shadow-lg border border-white/10 bg-black select-none rounded-xl sm:rounded-2xl overflow-hidden"
                     style={{ transform: "translateZ(0)", WebkitMaskImage: "-webkit-radial-gradient(white, black)" }}
                   >
                     {effectiveSlides.map((slide, i) => (
@@ -2790,7 +3108,7 @@ export default function Storefront() {
 
                 const recommendedSection = (
                   <>
-                    <div className={`max-w-6xl mx-auto px-3 sm:px-4 ${isFiltered ? "mt-6 sm:mt-8 mb-4 sm:mb-6" : "mt-2 sm:mt-3 mb-1.5 sm:mb-2"} flex items-center gap-3`}>
+                    <div className={`w-full px-3 sm:px-6 md:px-8 ${isFiltered ? "mt-6 sm:mt-8 mb-4 sm:mb-6" : "mt-2 sm:mt-3 mb-1.5 sm:mb-2"} flex items-center gap-3`}>
                       <div className="flex-1 border-t border-white/20"></div>
                       <span className="text-[10px] sm:text-xs md:text-sm font-black tracking-widest text-[#ffd025] uppercase shrink-0">
                         #NUESTROSRECOMENDADOS
@@ -2798,8 +3116,8 @@ export default function Storefront() {
                       <div className="flex-1 border-t border-white/20"></div>
                     </div>
 
-                    <section className={`max-w-6xl mx-auto px-3 sm:px-4 ${isFiltered ? "mt-2 sm:mt-4" : "mt-1.5 sm:mt-3"}`}>
-                      <div className="w-full h-12 sm:h-28 md:h-44 overflow-hidden rounded-none border border-white/10 mb-3 sm:mb-4 bg-black select-none">
+                    <section className={`w-full px-3 sm:px-6 md:px-8 ${isFiltered ? "mt-2 sm:mt-4" : "mt-1.5 sm:mt-3"}`}>
+                      <div className="w-full h-16 sm:h-28 md:h-48 lg:h-60 xl:h-72 overflow-hidden rounded-none border border-white/10 mb-3 sm:mb-4 bg-black select-none">
                         <img
                           src={settings.promoBannerImage || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=1600&auto=format&fit=crop&q=80"}
                           alt="Promociones Fellas"
@@ -2809,7 +3127,7 @@ export default function Storefront() {
                         />
                       </div>
 
-                      <div className="grid grid-cols-3 md:grid-cols-4 gap-1.5 xs:gap-2 sm:gap-3 md:gap-3.5 items-stretch w-full">
+                      <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full">
                         {promoProducts.map((product, idx) => (
                           <div
                             key={product.id}
@@ -2890,7 +3208,7 @@ export default function Storefront() {
 
                 const collectionsSection = (
                   <>
-                    <div className={`max-w-6xl mx-auto px-3 sm:px-4 ${isFiltered ? "mt-2 sm:mt-3 mb-1.5 sm:mb-2" : "mt-5 sm:mt-7 mb-2.5 sm:mb-3"} flex items-center justify-between`}>
+                    <div className={`w-full px-3 sm:px-6 md:px-8 ${isFiltered ? "mt-2 sm:mt-3 mb-1.5 sm:mb-2" : "mt-5 sm:mt-7 mb-2.5 sm:mb-3"} flex items-center justify-between`}>
                       <span className="text-[10px] sm:text-xs md:text-sm font-black tracking-widest text-[#ffd025] uppercase">
                         #NUESTRASCOLECCIONES
                       </span>
@@ -2909,8 +3227,8 @@ export default function Storefront() {
                       )}
                     </div>
 
-                    <section className={`max-w-6xl mx-auto px-3 sm:px-4 ${isFiltered ? "mt-1.5 sm:mt-3" : "mt-2 sm:mt-4"}`}>
-                      <div className="w-full h-12 sm:h-28 md:h-44 overflow-hidden rounded-none border border-white/10 mb-4 sm:mb-6 bg-black select-none">
+                    <section className={`w-full px-3 sm:px-6 md:px-8 ${isFiltered ? "mt-1.5 sm:mt-3" : "mt-2 sm:mt-4"}`}>
+                      <div className="w-full h-16 sm:h-28 md:h-48 lg:h-60 xl:h-72 overflow-hidden rounded-none border border-white/10 mb-4 sm:mb-6 bg-black select-none">
                         <img
                           src={settings.aislesBannerImage || "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=1600&auto=format&fit=crop&q=80"}
                           alt="Pasillos"
@@ -3003,7 +3321,7 @@ export default function Storefront() {
                       {!isFiltered ? (
                         /* Si no hay filtro activo en PC (Home inicial): Mostrar la Selección Manual de Colecciones */
                         <div className="hidden md:block">
-                          <div className="grid grid-cols-3 md:grid-cols-6 gap-x-2 sm:gap-x-3 md:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full">
+                          <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full">
                             {homeCollectionProducts.map((product) => (
                               <div
                                 key={product.id}
@@ -3089,7 +3407,7 @@ export default function Storefront() {
 
                             return (
                               <div key={aisleName} id={`aisle-${aisleName}`} className="scroll-mt-24">
-                                <div className="grid grid-cols-3 md:grid-cols-4 gap-x-1.5 xs:gap-x-2 sm:gap-x-3 md:gap-x-3.5 gap-y-4 xs:gap-y-5 sm:gap-y-6 md:gap-y-8 items-stretch w-full">
+                                <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full">
                                   {aisleProducts.map((product) => (
                                     <div
                                       key={product.id}
@@ -3191,7 +3509,7 @@ export default function Storefront() {
               })()}
 
               {/* SECCIÓN #NUESTROSCLIENTES: 2 reseñas en celular, 4 reseñas en computador */}
-              <div className="max-w-6xl mx-auto px-3 sm:px-4 mt-10 mb-6 flex items-center gap-3">
+              <div className="w-full px-3 sm:px-6 md:px-8 mt-10 mb-6 flex items-center gap-3">
                 <div className="flex-1 border-t border-white/20"></div>
                 <span className="text-[10px] sm:text-xs md:text-sm font-black tracking-widest text-[#ffd025] uppercase shrink-0">
                   #NUESTROSCLIENTES
@@ -3199,8 +3517,8 @@ export default function Storefront() {
                 <div className="flex-1 border-t border-white/20"></div>
               </div>
 
-              <div className="max-w-4xl mx-auto px-3 sm:px-4 mb-10">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="w-full px-3 sm:px-6 md:px-8 mb-10">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {googleMapsData.reviews.slice(0, 4).map((rev, idx) => (
                     <div
                       key={rev.id}
@@ -3245,7 +3563,7 @@ export default function Storefront() {
           )}
 
           <footer className="mt-8 pt-6 pb-6 border-t border-white/10 bg-black/60 text-gray-400">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            <div className="w-full px-4 sm:px-8 md:px-10 lg:px-12">
               {/* Distribución exacta en 2 Columnas con línea divisoria central */}
               <div className="grid grid-cols-2 gap-3 sm:gap-8 items-start">
                 {/* COLUMNA 1: Logo y Descripción de la Tienda */}
@@ -3845,6 +4163,7 @@ export default function Storefront() {
               {[
                 { id: "products", label: "Productos", icon: Package, desc: "Catálogo, fotos y stock" },
                 { id: "classifications", label: "Clasificaciones", icon: Tag, desc: "Categorías y pasillos" },
+                { id: "contingency", label: "Tienda Contingencia", icon: AlertTriangle, desc: "Pasillos y catálogo reducido" },
                 { id: "orders", label: "Pedidos", icon: ClipboardList, desc: "Comandas en vivo" },
                 { id: "stats", label: "Estadísticas", icon: TrendingUp, desc: "Reportes de ventas" },
                 { id: "customers", label: "Clientes", icon: Users, desc: "Base de datos" },
@@ -3937,6 +4256,7 @@ export default function Storefront() {
                   {[
                     { id: "products", label: "Productos", icon: Package },
                     { id: "classifications", label: "Clasificaciones", icon: Tag },
+                    { id: "contingency", label: "Tienda Contingencia", icon: AlertTriangle },
                     { id: "orders", label: "Pedidos", icon: ClipboardList },
                     { id: "stats", label: "Estadísticas", icon: TrendingUp },
                     { id: "customers", label: "Clientes", icon: Users },
@@ -5206,6 +5526,447 @@ export default function Storefront() {
                                           }`}
                                         >
                                           {isSelected ? "Quitar" : isFull ? "Límite 6 alcanzado" : "+ Añadir a Colección"}
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* BLOQUE C: Pestaña Exclusiva Oportunidades ⏰ (Banner + Selección de Productos) */}
+                          <div className="bg-[#181826] p-4 sm:p-5 rounded-2xl border border-white/10 space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-black text-amber-400 uppercase tracking-wider block">
+                                    C. Pestaña Exclusiva "OPORTUNIDADES" ⏰ (Banner + Selección de Productos)
+                                  </span>
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                                    {(settingsDraft.opportunitiesProductIds ?? []).length} seleccionados
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-gray-400 mt-0.5">
+                                  Configura el banner panorámico y elige la lista de productos (5, 10, 20 o más) que se mostrarán al presionar "OPORTUNIDADES".
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const offers = products.filter((p) => !p.hidden && (p.oferta || p.bestseller)).map((p) => p.id);
+                                    const fallback = products.filter((p) => !p.hidden).map((p) => p.id);
+                                    const picked = Array.from(new Set([...offers, ...fallback])).slice(0, 10);
+                                    setSettingsDraft((p) => ({ ...p, opportunitiesProductIds: picked }));
+                                    showToast("Cargados 10 productos para Oportunidades");
+                                  }}
+                                  className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl text-[10px] font-bold uppercase transition-colors"
+                                >
+                                  ⚡ Cargar 10
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const offers = products.filter((p) => !p.hidden && (p.oferta || p.bestseller)).map((p) => p.id);
+                                    const fallback = products.filter((p) => !p.hidden).map((p) => p.id);
+                                    const picked = Array.from(new Set([...offers, ...fallback])).slice(0, 20);
+                                    setSettingsDraft((p) => ({ ...p, opportunitiesProductIds: picked }));
+                                    showToast("Cargados 20 productos para Oportunidades");
+                                  }}
+                                  className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl text-[10px] font-bold uppercase transition-colors"
+                                >
+                                  ⚡ Cargar 20
+                                </button>
+                                {(settingsDraft.opportunitiesProductIds ?? []).length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSettingsDraft((p) => ({ ...p, opportunitiesProductIds: [] }));
+                                      showToast("Lista de Oportunidades limpiada");
+                                    }}
+                                    className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-colors border border-white/10"
+                                  >
+                                    Limpiar
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Banner de Oportunidades */}
+                            <div className="space-y-3 bg-[#12121d] p-3 rounded-xl border border-white/5">
+                              <span className="text-[10px] font-black text-amber-300 uppercase tracking-wider block">
+                                Configuración de Banner de Oportunidades
+                              </span>
+                              <div className="w-full h-20 sm:h-28 overflow-hidden rounded-lg border border-white/10 bg-black relative">
+                                <img
+                                  src={settingsDraft.opportunitiesBannerImage || "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=1600&auto=format&fit=crop&q=80"}
+                                  alt="Banner Oportunidades"
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <input
+                                  type="text"
+                                  value={settingsDraft.opportunitiesBannerTitle || ""}
+                                  onChange={(e) => setSettingsDraft({ ...settingsDraft, opportunitiesBannerTitle: e.target.value })}
+                                  placeholder="Título: ⏰ OPORTUNIDADES & OFERTAS FLASH"
+                                  className="w-full bg-[#181826] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-amber-400"
+                                />
+                                <input
+                                  type="text"
+                                  value={settingsDraft.opportunitiesBannerSubtitle || ""}
+                                  onChange={(e) => setSettingsDraft({ ...settingsDraft, opportunitiesBannerSubtitle: e.target.value })}
+                                  placeholder="Subtítulo: Descuentos por tiempo limitado"
+                                  className="w-full bg-[#181826] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-amber-400"
+                                />
+                              </div>
+                              <div className="flex gap-2 items-center">
+                                <input
+                                  type="text"
+                                  value={settingsDraft.opportunitiesBannerImage || ""}
+                                  onChange={(e) => setSettingsDraft({ ...settingsDraft, opportunitiesBannerImage: e.target.value })}
+                                  className="flex-1 bg-[#181826] border border-white/10 rounded-xl p-2 text-white text-xs"
+                                  placeholder="URL del banner de Oportunidades"
+                                />
+                                <label className="bg-amber-500/10 text-amber-300 px-3 py-2 rounded-xl flex items-center cursor-pointer hover:bg-amber-500/20 border border-amber-500/30 text-xs font-bold gap-1">
+                                  <Upload size={13} />
+                                  <span>Subir</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) =>
+                                      handleImageUpload(e, (url) => setSettingsDraft({ ...settingsDraft, opportunitiesBannerImage: url }))
+                                    }
+                                  />
+                                </label>
+                              </div>
+                            </div>
+
+                            {/* Lista visual de productos seleccionados para Oportunidades */}
+                            <div>
+                              <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block mb-2">
+                                Productos elegidos para Oportunidades ({(settingsDraft.opportunitiesProductIds ?? []).length} de cualquier cantidad):
+                              </span>
+                              {(settingsDraft.opportunitiesProductIds ?? []).length === 0 ? (
+                                <div className="text-center py-4 border border-dashed border-white/10 rounded-xl text-gray-400 text-xs">
+                                  Sin selección manual. (Se mostrarán automáticamente productos en oferta).
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                                  {(settingsDraft.opportunitiesProductIds ?? []).map((id, idx) => {
+                                    const prod = products.find((p) => p.id === id);
+                                    if (!prod) return null;
+                                    return (
+                                      <div
+                                        key={id}
+                                        className="bg-[#12121d] border border-white/10 rounded-xl p-2 flex items-center justify-between gap-2 shadow"
+                                      >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <span className="text-[9px] font-black text-amber-400 px-1 py-0.5 bg-black/40 rounded">
+                                            #{idx + 1}
+                                          </span>
+                                          <p className="text-xs font-bold text-white truncate">{prod.name}</p>
+                                        </div>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setSettingsDraft((p) => ({
+                                                ...p,
+                                                opportunitiesProductIds: (p.opportunitiesProductIds ?? []).filter((x) => x !== id),
+                                              }));
+                                            }}
+                                            className="p-1 text-red-400 hover:text-red-300"
+                                            title="Quitar"
+                                          >
+                                            <X size={13} />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Buscador de catálogo para añadir a Oportunidades */}
+                            <div className="pt-2 border-t border-white/5 space-y-2">
+                              <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block">
+                                Buscar y añadir productos del catálogo a Oportunidades:
+                              </span>
+                              <input
+                                type="text"
+                                value={featuredOportunidadesSearch}
+                                onChange={(e) => setFeaturedOportunidadesSearch(e.target.value)}
+                                placeholder="Buscar por nombre, pasillo..."
+                                className="w-full bg-[#12121d] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:border-amber-400"
+                              />
+                              <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                                {products
+                                  .filter((p) => !p.hidden)
+                                  .filter((p) => {
+                                    if (!featuredOportunidadesSearch.trim()) return true;
+                                    const q = featuredOportunidadesSearch.toLowerCase();
+                                    return (
+                                      p.name.toLowerCase().includes(q) ||
+                                      (p.category && p.category.toLowerCase().includes(q)) ||
+                                      (p.aisle && p.aisle.toLowerCase().includes(q))
+                                    );
+                                  })
+                                  .slice(0, 25)
+                                  .map((product) => {
+                                    const isSelected = (settingsDraft.opportunitiesProductIds ?? []).includes(product.id);
+                                    return (
+                                      <div
+                                        key={product.id}
+                                        className={`flex items-center justify-between p-2 rounded-xl border transition-all ${
+                                          isSelected
+                                            ? "bg-amber-500/10 border-amber-500/30 text-white"
+                                            : "bg-[#141420] border-white/5 text-gray-300 hover:border-white/15"
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <p className="text-xs font-bold text-white truncate">{product.name}</p>
+                                          <span className="text-[10px] text-gray-400 truncate">${Number(product.price || 0).toLocaleString("es-CL")}</span>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (isSelected) {
+                                              setSettingsDraft((p) => ({
+                                                ...p,
+                                                opportunitiesProductIds: (p.opportunitiesProductIds ?? []).filter((x) => x !== product.id),
+                                              }));
+                                            } else {
+                                              setSettingsDraft((p) => ({
+                                                ...p,
+                                                opportunitiesProductIds: [...(p.opportunitiesProductIds ?? []), product.id],
+                                              }));
+                                              showToast(`Añadido a Oportunidades: "${product.name}"`);
+                                            }
+                                          }}
+                                          className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition-all shrink-0 ${
+                                            isSelected
+                                              ? "bg-red-500/20 text-red-300 hover:bg-red-500/30"
+                                              : "bg-amber-400 text-black hover:bg-amber-300"
+                                          }`}
+                                        >
+                                          {isSelected ? "Quitar" : "+ Añadir"}
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* BLOQUE D: Pestaña Exclusiva Packs 🎁 (Banner + Selección de Productos) */}
+                          <div className="bg-[#181826] p-4 sm:p-5 rounded-2xl border border-white/10 space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-black text-purple-400 uppercase tracking-wider block">
+                                    D. Pestaña Exclusiva "PACKS" 🎁 (Banner + Selección de Productos)
+                                  </span>
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">
+                                    {(settingsDraft.packsProductIds ?? []).length} seleccionados
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-gray-400 mt-0.5">
+                                  Configura el banner panorámico y elige la lista de productos (5, 10, 20 o más) que se mostrarán al presionar "PACKS".
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const packs = products.filter((p) => !p.hidden && (p.name.toLowerCase().includes("pack") || p.category?.toLowerCase().includes("pack") || p.aisle?.toLowerCase().includes("pack"))).map((p) => p.id);
+                                    const fallback = products.filter((p) => !p.hidden).map((p) => p.id);
+                                    const picked = Array.from(new Set([...packs, ...fallback])).slice(0, 10);
+                                    setSettingsDraft((p) => ({ ...p, packsProductIds: picked }));
+                                    showToast("Cargados 10 packs/productos");
+                                  }}
+                                  className="px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-xl text-[10px] font-bold uppercase transition-colors"
+                                >
+                                  ⚡ Cargar 10 Packs
+                                </button>
+                                {(settingsDraft.packsProductIds ?? []).length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSettingsDraft((p) => ({ ...p, packsProductIds: [] }));
+                                      showToast("Lista de Packs limpiada");
+                                    }}
+                                    className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-colors border border-white/10"
+                                  >
+                                    Limpiar
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Banner de Packs */}
+                            <div className="space-y-3 bg-[#12121d] p-3 rounded-xl border border-white/5">
+                              <span className="text-[10px] font-black text-purple-300 uppercase tracking-wider block">
+                                Configuración de Banner de Packs
+                              </span>
+                              <div className="w-full h-20 sm:h-28 overflow-hidden rounded-lg border border-white/10 bg-black relative">
+                                <img
+                                  src={settingsDraft.packsBannerImage || "https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=1600&auto=format&fit=crop&q=80"}
+                                  alt="Banner Packs"
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <input
+                                  type="text"
+                                  value={settingsDraft.packsBannerTitle || ""}
+                                  onChange={(e) => setSettingsDraft({ ...settingsDraft, packsBannerTitle: e.target.value })}
+                                  placeholder="Título: 🎁 PACKS & PROMOCIONES"
+                                  className="w-full bg-[#181826] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-purple-400"
+                                />
+                                <input
+                                  type="text"
+                                  value={settingsDraft.packsBannerSubtitle || ""}
+                                  onChange={(e) => setSettingsDraft({ ...settingsDraft, packsBannerSubtitle: e.target.value })}
+                                  placeholder="Subtítulo: Arma tu previa con combos"
+                                  className="w-full bg-[#181826] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-purple-400"
+                                />
+                              </div>
+                              <div className="flex gap-2 items-center">
+                                <input
+                                  type="text"
+                                  value={settingsDraft.packsBannerImage || ""}
+                                  onChange={(e) => setSettingsDraft({ ...settingsDraft, packsBannerImage: e.target.value })}
+                                  className="flex-1 bg-[#181826] border border-white/10 rounded-xl p-2 text-white text-xs"
+                                  placeholder="URL del banner de Packs"
+                                />
+                                <label className="bg-purple-500/10 text-purple-300 px-3 py-2 rounded-xl flex items-center cursor-pointer hover:bg-purple-500/20 border border-purple-500/30 text-xs font-bold gap-1">
+                                  <Upload size={13} />
+                                  <span>Subir</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) =>
+                                      handleImageUpload(e, (url) => setSettingsDraft({ ...settingsDraft, packsBannerImage: url }))
+                                    }
+                                  />
+                                </label>
+                              </div>
+                            </div>
+
+                            {/* Lista visual de productos seleccionados para Packs */}
+                            <div>
+                              <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block mb-2">
+                                Productos elegidos para Packs ({(settingsDraft.packsProductIds ?? []).length} de cualquier cantidad):
+                              </span>
+                              {(settingsDraft.packsProductIds ?? []).length === 0 ? (
+                                <div className="text-center py-4 border border-dashed border-white/10 rounded-xl text-gray-400 text-xs">
+                                  Sin selección manual. (Se mostrarán automáticamente productos de la categoría packs).
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                                  {(settingsDraft.packsProductIds ?? []).map((id, idx) => {
+                                    const prod = products.find((p) => p.id === id);
+                                    if (!prod) return null;
+                                    return (
+                                      <div
+                                        key={id}
+                                        className="bg-[#12121d] border border-white/10 rounded-xl p-2 flex items-center justify-between gap-2 shadow"
+                                      >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <span className="text-[9px] font-black text-purple-400 px-1 py-0.5 bg-black/40 rounded">
+                                            #{idx + 1}
+                                          </span>
+                                          <p className="text-xs font-bold text-white truncate">{prod.name}</p>
+                                        </div>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setSettingsDraft((p) => ({
+                                                ...p,
+                                                packsProductIds: (p.packsProductIds ?? []).filter((x) => x !== id),
+                                              }));
+                                            }}
+                                            className="p-1 text-red-400 hover:text-red-300"
+                                            title="Quitar"
+                                          >
+                                            <X size={13} />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Buscador de catálogo para añadir a Packs */}
+                            <div className="pt-2 border-t border-white/5 space-y-2">
+                              <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block">
+                                Buscar y añadir productos del catálogo a Packs:
+                              </span>
+                              <input
+                                type="text"
+                                value={featuredPacksSearch}
+                                onChange={(e) => setFeaturedPacksSearch(e.target.value)}
+                                placeholder="Buscar por nombre, pasillo..."
+                                className="w-full bg-[#12121d] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:border-purple-400"
+                              />
+                              <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                                {products
+                                  .filter((p) => !p.hidden)
+                                  .filter((p) => {
+                                    if (!featuredPacksSearch.trim()) return true;
+                                    const q = featuredPacksSearch.toLowerCase();
+                                    return (
+                                      p.name.toLowerCase().includes(q) ||
+                                      (p.category && p.category.toLowerCase().includes(q)) ||
+                                      (p.aisle && p.aisle.toLowerCase().includes(q))
+                                    );
+                                  })
+                                  .slice(0, 25)
+                                  .map((product) => {
+                                    const isSelected = (settingsDraft.packsProductIds ?? []).includes(product.id);
+                                    return (
+                                      <div
+                                        key={product.id}
+                                        className={`flex items-center justify-between p-2 rounded-xl border transition-all ${
+                                          isSelected
+                                            ? "bg-purple-500/10 border-purple-500/30 text-white"
+                                            : "bg-[#141420] border-white/5 text-gray-300 hover:border-white/15"
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <p className="text-xs font-bold text-white truncate">{product.name}</p>
+                                          <span className="text-[10px] text-gray-400 truncate">${Number(product.price || 0).toLocaleString("es-CL")}</span>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (isSelected) {
+                                              setSettingsDraft((p) => ({
+                                                ...p,
+                                                packsProductIds: (p.packsProductIds ?? []).filter((x) => x !== product.id),
+                                              }));
+                                            } else {
+                                              setSettingsDraft((p) => ({
+                                                ...p,
+                                                packsProductIds: [...(p.packsProductIds ?? []), product.id],
+                                              }));
+                                              showToast(`Añadido a Packs: "${product.name}"`);
+                                            }
+                                          }}
+                                          className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition-all shrink-0 ${
+                                            isSelected
+                                              ? "bg-red-500/20 text-red-300 hover:bg-red-500/30"
+                                              : "bg-purple-500 text-white hover:bg-purple-400"
+                                          }`}
+                                        >
+                                          {isSelected ? "Quitar" : "+ Añadir"}
                                         </button>
                                       </div>
                                     );
@@ -6504,6 +7265,376 @@ export default function Storefront() {
             )}
 
             {adminTab === "social" && <CommunityAdminPanel />}
+
+            {adminTab === "contingency" && (
+              <div className="space-y-6 max-w-5xl mx-auto animate-fade-in pb-12">
+                {/* Encabezado del Panel de Contingencia */}
+                <div className="bg-[#13131f]/90 backdrop-blur-2xl p-6 sm:p-7 rounded-3xl border border-red-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xl shadow-red-950/20">
+                  <div>
+                    <div className="flex items-center gap-2 text-xs font-bold text-red-400 uppercase tracking-wider mb-1">
+                      <AlertTriangle size={16} /> Panel Exclusivo de Autoadministración
+                    </div>
+                    <h2 className="text-xl sm:text-2xl font-black text-white uppercase flex items-center gap-2.5">
+                      <span>Tienda de Contingencia</span>
+                      <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wide border ${
+                        settingsDraft.contingencyMode
+                          ? "bg-red-600/30 text-red-300 border-red-500/50 animate-pulse"
+                          : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                      }`}>
+                        {settingsDraft.contingencyMode ? "🚨 MODO CONTINGENCIA EN VIVO" : "✅ TIENDA MODO NORMAL"}
+                      </span>
+                    </h2>
+                    <p className="text-xs text-gray-400 mt-1 max-w-2xl">
+                      Configura cada pasillo y producto de forma independiente para cuando la tienda opere en modo de contingencia o emergencia por alta demanda.
+                    </p>
+                  </div>
+
+                  {/* Botón Principal de Guardado */}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <button
+                      type="button"
+                      onClick={saveSettings}
+                      className="px-5 py-3 bg-gradient-to-r from-red-600 via-amber-500 to-[#ffd025] text-black font-black rounded-xl text-xs uppercase tracking-wider hover:opacity-95 transition-all shadow-lg shadow-red-900/30 flex items-center gap-2"
+                    >
+                      <CheckCircle size={16} /> Guardar Configuración Contingencia
+                    </button>
+                  </div>
+                </div>
+
+                {/* SECCIÓN 1: Control Maestro y Mensaje Global de Contingencia */}
+                <div className="bg-[#13131f]/90 backdrop-blur-2xl p-6 rounded-3xl border border-white/10 space-y-5 shadow-xl">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+                    <div>
+                      <span className="text-sm font-black text-white uppercase tracking-wider block">
+                        1. Estado General del Modo Contingencia
+                      </span>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        Activa este interruptor cuando desees restringir la tienda pública al catálogo reducido de contingencia y mostrar avisos de emergencia.
+                      </p>
+                    </div>
+                    <label className="flex items-center gap-3 cursor-pointer bg-[#181826] px-4 py-2.5 rounded-2xl border border-white/10 hover:border-white/20 transition-all shrink-0">
+                      <span className={`text-xs font-black uppercase ${settingsDraft.contingencyMode ? "text-red-400" : "text-gray-400"}`}>
+                        {settingsDraft.contingencyMode ? "Contingencia Activada" : "Contingencia Inactiva"}
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={!!settingsDraft.contingencyMode}
+                        onChange={(e) => setSettingsDraft({ ...settingsDraft, contingencyMode: e.target.checked })}
+                        className="w-5 h-5 accent-red-500 rounded cursor-pointer"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-black text-amber-300 uppercase tracking-wider mb-2">
+                        Aviso Emergencia al Cliente (Barra Superior Pública)
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={settingsDraft.contingencyMessage || ""}
+                        onChange={(e) => setSettingsDraft({ ...settingsDraft, contingencyMessage: e.target.value })}
+                        placeholder="Ej: 🚨 MODO CONTINGENCIA: Por alta demanda operando con catálogo reducido y entrega express."
+                        className="w-full bg-[#12121d] border border-white/10 rounded-xl p-3 text-white text-xs focus:border-amber-400 focus:outline-none placeholder-gray-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-black text-amber-300 uppercase tracking-wider mb-2">
+                        Banner Especial de Portada para Contingencia
+                      </label>
+                      <div className="space-y-2">
+                        <div className="w-full h-16 rounded-xl border border-white/10 bg-black overflow-hidden relative">
+                          <img
+                            src={settingsDraft.contingencyBannerImage || "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=1600&auto=format&fit=crop&q=80"}
+                            alt="Banner Contingencia"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={settingsDraft.contingencyBannerImage || ""}
+                            onChange={(e) => setSettingsDraft({ ...settingsDraft, contingencyBannerImage: e.target.value })}
+                            placeholder="URL del banner de contingencia"
+                            className="flex-1 bg-[#12121d] border border-white/10 rounded-xl p-2 text-white text-xs"
+                          />
+                          <label className="bg-amber-500/10 text-amber-300 px-3 py-2 rounded-xl flex items-center cursor-pointer hover:bg-amber-500/20 border border-amber-500/30 text-xs font-bold gap-1 shrink-0">
+                            <Upload size={13} />
+                            <span>Subir</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => handleImageUpload(e, (url) => setSettingsDraft({ ...settingsDraft, contingencyBannerImage: url }))}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SECCIÓN 2: Configuración Individual de Pasillos para Contingencia */}
+                <div className="bg-[#13131f]/90 backdrop-blur-2xl p-6 rounded-3xl border border-white/10 space-y-6 shadow-xl">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
+                    <div>
+                      <span className="text-sm font-black text-[#ffd025] uppercase tracking-wider block">
+                        2. Configuración Individual por Pasillo / Categoría
+                      </span>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        Habilita o deshabilita cada pasillo de forma independiente para la versión de contingencia de la tienda.
+                      </p>
+                    </div>
+
+                    {/* Acciones globales de pasillos */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cfg = { ...(settingsDraft.contingencyAislesConfig || {}) };
+                          allStoreAisles.forEach((aisle) => {
+                            cfg[aisle] = { ...(cfg[aisle] || {}), enabled: true };
+                          });
+                          setSettingsDraft({ ...settingsDraft, contingencyAislesConfig: cfg });
+                          showToast("Habilitados todos los pasillos en contingencia");
+                        }}
+                        className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-xl text-[10.5px] font-bold uppercase transition-colors"
+                      >
+                        ⚡ Habilitar Todos
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cfg = { ...(settingsDraft.contingencyAislesConfig || {}) };
+                          allStoreAisles.forEach((aisle) => {
+                            cfg[aisle] = { ...(cfg[aisle] || {}), enabled: false };
+                          });
+                          setSettingsDraft({ ...settingsDraft, contingencyAislesConfig: cfg });
+                          showToast("Deshabilitados todos los pasillos en contingencia");
+                        }}
+                        className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 rounded-xl text-[10.5px] font-bold uppercase transition-colors"
+                      >
+                        🚫 Deshabilitar Todos
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Lista Tarjetas de Pasillos */}
+                  <div className="space-y-4">
+                    {allStoreAisles.map((aisleName) => {
+                      const aisleConfig = (settingsDraft.contingencyAislesConfig || {})[aisleName] || {};
+                      const isEnabled = aisleConfig.enabled !== false;
+                      const aisleProducts = products.filter((p) => p.aisle === aisleName || p.category === aisleName);
+                      const activeProductsCount = aisleProducts.filter((p) => p.contingencyEnabled !== false).length;
+
+                      return (
+                        <div
+                          key={aisleName}
+                          className={`rounded-2xl border transition-all p-4 sm:p-5 space-y-4 ${
+                            isEnabled
+                              ? "bg-[#181826] border-white/10 shadow-lg"
+                              : "bg-[#12121c]/60 border-white/5 opacity-75"
+                          }`}
+                        >
+                          {/* Encabezado del Pasillo */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shrink-0 ${
+                                isEnabled ? "bg-amber-500/20 text-amber-300 border border-amber-500/30" : "bg-gray-800 text-gray-500"
+                              }`}>
+                                <Tag size={16} />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <h3 className="text-sm font-black text-white uppercase tracking-wider truncate">{aisleName}</h3>
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                                    isEnabled ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-red-500/20 text-red-300 border border-red-500/30"
+                                  }`}>
+                                    {isEnabled ? "PASILLO ACTIVO EN CONTINGENCIA" : "PASILLO OCULTO EN CONTINGENCIA"}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-gray-400 mt-0.5">
+                                  {activeProductsCount} de {aisleProducts.length} productos disponibles durante contingencia
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Controles del Pasillo */}
+                            <div className="flex items-center gap-2 shrink-0">
+                              <label className="flex items-center gap-2 cursor-pointer bg-[#12121d] px-3.5 py-1.5 rounded-xl border border-white/10 hover:border-white/20 transition-colors">
+                                <span className="text-xs font-bold text-gray-300">
+                                  {isEnabled ? "Activo" : "Inactivo"}
+                                </span>
+                                <input
+                                  type="checkbox"
+                                  checked={isEnabled}
+                                  onChange={(e) => {
+                                    const cfg = { ...(settingsDraft.contingencyAislesConfig || {}) };
+                                    cfg[aisleName] = { ...(cfg[aisleName] || {}), enabled: e.target.checked };
+                                    setSettingsDraft({ ...settingsDraft, contingencyAislesConfig: cfg });
+                                  }}
+                                  className="w-4 h-4 accent-[#ffd025] rounded cursor-pointer"
+                                />
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Ajustes específicos del pasillo si está activo */}
+                          {isEnabled && (
+                            <div className="space-y-3 pt-1">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-[10.5px] font-bold text-gray-400 uppercase mb-1">
+                                    Aviso personalizado para este pasillo en Contingencia (opcional)
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={aisleConfig.noticeText || ""}
+                                    onChange={(e) => {
+                                      const cfg = { ...(settingsDraft.contingencyAislesConfig || {}) };
+                                      cfg[aisleName] = { ...(cfg[aisleName] || {}), noticeText: e.target.value };
+                                      setSettingsDraft({ ...settingsDraft, contingencyAislesConfig: cfg });
+                                    }}
+                                    placeholder="Ej: Stock limitado a marcas principales"
+                                    className="w-full bg-[#12121d] border border-white/10 rounded-xl p-2 text-white text-xs focus:border-[#ffd025]"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-[10.5px] font-bold text-gray-400 uppercase mb-1">
+                                    Banner de pasillo exclusivo para Contingencia (URL / opcional)
+                                  </label>
+                                  <div className="flex gap-1.5">
+                                    <input
+                                      type="text"
+                                      value={aisleConfig.bannerImage || ""}
+                                      onChange={(e) => {
+                                        const cfg = { ...(settingsDraft.contingencyAislesConfig || {}) };
+                                        cfg[aisleName] = { ...(cfg[aisleName] || {}), bannerImage: e.target.value };
+                                        setSettingsDraft({ ...settingsDraft, contingencyAislesConfig: cfg });
+                                      }}
+                                      placeholder="URL de banner especial"
+                                      className="flex-1 bg-[#12121d] border border-white/10 rounded-xl p-2 text-white text-xs"
+                                    />
+                                    <label className="bg-[#ffd025]/10 text-[#ffd025] px-2.5 py-1.5 rounded-xl flex items-center cursor-pointer hover:bg-[#ffd025]/20 border border-[#ffd025]/20 text-xs font-bold gap-1 shrink-0">
+                                      <Upload size={12} />
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) =>
+                                          handleImageUpload(e, (url) => {
+                                            const cfg = { ...(settingsDraft.contingencyAislesConfig || {}) };
+                                            cfg[aisleName] = { ...(cfg[aisleName] || {}), bannerImage: url };
+                                            setSettingsDraft({ ...settingsDraft, contingencyAislesConfig: cfg });
+                                          })
+                                        }
+                                      />
+                                    </label>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Selección rápida de productos de este pasillo */}
+                              <div className="pt-2 border-t border-white/5 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider">
+                                    Productos de "{aisleName}" habilitados en contingencia ({activeProductsCount} activos):
+                                  </span>
+                                  <div className="flex gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        aisleProducts.forEach((prod) => {
+                                          if (prod.contingencyEnabled === false) {
+                                            updateProductMut.mutate({ id: prod.id, data: { contingencyEnabled: true } });
+                                          }
+                                        });
+                                        showToast(`Habilitados todos en "${aisleName}"`);
+                                      }}
+                                      className="text-[9.5px] px-2 py-0.5 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded font-bold hover:bg-emerald-500/20 transition-colors"
+                                    >
+                                      Marcar Todos
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        aisleProducts.forEach((prod) => {
+                                          if (prod.contingencyEnabled !== false) {
+                                            updateProductMut.mutate({ id: prod.id, data: { contingencyEnabled: false } });
+                                          }
+                                        });
+                                        showToast(`Desmarcados todos en "${aisleName}"`);
+                                      }}
+                                      className="text-[9.5px] px-2 py-0.5 bg-red-500/10 text-red-300 border border-red-500/20 rounded font-bold hover:bg-red-500/20 transition-colors"
+                                    >
+                                      Desmarcar Todos
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Grid de productos del pasillo */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
+                                  {aisleProducts.map((prod) => {
+                                    const prodActive = prod.contingencyEnabled !== false;
+                                    return (
+                                      <div
+                                        key={prod.id}
+                                        className={`p-2 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+                                          prodActive ? "bg-[#12121d] border-emerald-500/30" : "bg-[#101017]/60 border-white/5 opacity-60"
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          {prod.image ? (
+                                            <img src={prod.image} alt={prod.name} className="w-7 h-7 object-cover rounded bg-black shrink-0 border border-white/10" />
+                                          ) : (
+                                            <div className="w-7 h-7 bg-white/5 rounded flex items-center justify-center shrink-0">
+                                              <Package size={12} className="text-gray-500" />
+                                            </div>
+                                          )}
+                                          <div className="min-w-0">
+                                            <p className="text-xs font-bold text-white truncate">{prod.name}</p>
+                                            <p className="text-[9.5px] text-gray-400">${prod.price.toLocaleString("es-CL")}</p>
+                                          </div>
+                                        </div>
+
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            updateProductMut.mutate({ id: prod.id, data: { contingencyEnabled: !prodActive } });
+                                          }}
+                                          className={`px-2 py-1 rounded text-[10px] font-bold uppercase transition-all shrink-0 ${
+                                            prodActive ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-white/5 text-gray-400 border border-white/10"
+                                          }`}
+                                        >
+                                          {prodActive ? "✓ Activo" : "Inactivo"}
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Botón Flotante de Guardado Final */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={saveSettings}
+                    className="w-full py-4 bg-gradient-to-r from-red-600 via-amber-500 to-[#ffd025] text-black rounded-2xl font-black uppercase text-sm tracking-wider hover:scale-[1.002] active:scale-[0.998] transition-all shadow-2xl flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle size={18} /> Guardar Todos los Ajustes de Contingencia
+                  </button>
+                </div>
+              </div>
+            )}
 
             {adminTab === "products" && (() => {
               const totalCount = products.length;

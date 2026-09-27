@@ -31,13 +31,11 @@ export interface Product {
 }
 
 export interface ProductInput {
-  /** @minLength 1 */
-  name: string;
-  /** @minimum 0 */
-  price: number;
-  image: string;
-  category: string;
-  aisle: string;
+  name?: string;
+  price?: number;
+  image?: string;
+  category?: string;
+  aisle?: string;
   subcategory?: string;
   optionsTitle?: string;
   options?: string[];
@@ -48,6 +46,7 @@ export interface ProductInput {
   hidden?: boolean;
   transferenciaEnabled?: boolean;
   transferenciaAmount?: number;
+  contingencyEnabled?: boolean;
 }
 
 export interface Category {

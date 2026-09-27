@@ -35,10 +35,20 @@ export interface Setting {
   deliveryMinimum: number;
   contingencyMode?: boolean;
   contingencyMessage?: string;
+  contingencyBannerImage?: string;
+  contingencyAislesConfig?: Record<string, { enabled?: boolean; bannerImage?: string; noticeText?: string; productIds?: number[] }>;
   promoBannerImage?: string;
   aislesBannerImage?: string;
   homeCollectionProductIds?: number[];
   recommendedProductIds?: number[];
+  opportunitiesBannerImage?: string;
+  opportunitiesBannerTitle?: string;
+  opportunitiesBannerSubtitle?: string;
+  opportunitiesProductIds?: number[];
+  packsBannerImage?: string;
+  packsBannerTitle?: string;
+  packsBannerSubtitle?: string;
+  packsProductIds?: number[];
   footerLogo?: string;
   footerDescription?: string;
   socialInstagram?: string;
@@ -230,11 +240,21 @@ const DEFAULT_DB: DatabaseSchema = {
     closeTime: "23:59",
     deliveryMinimum: 5000,
     contingencyMode: false,
-    contingencyMessage: "🚨 MODO CONTINGENCIA: Por alta demanda o motivos de fuerza mayor, la recepción de pedidos web se encuentra pausada temporalmente. Por favor consulta por WhatsApp.",
+    contingencyMessage: "🚨 MODO CONTINGENCIA: Operando con catálogo reducido y entrega prioritaria por alta demanda.",
+    contingencyBannerImage: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=1600&auto=format&fit=crop&q=80",
+    contingencyAislesConfig: {},
     promoBannerImage: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=1600&auto=format&fit=crop&q=80",
     aislesBannerImage: "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=1600&auto=format&fit=crop&q=80",
     homeCollectionProductIds: [1, 2, 3, 4, 5, 6],
     recommendedProductIds: [1, 2, 3, 4],
+    opportunitiesBannerImage: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=1600&auto=format&fit=crop&q=80",
+    opportunitiesBannerTitle: "⏰ OPORTUNIDADES & OFERTAS FLASH",
+    opportunitiesBannerSubtitle: "Aprovecha descuentos por tiempo limitado y promociones directas",
+    opportunitiesProductIds: [1, 2, 3, 4, 7, 8],
+    packsBannerImage: "https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=1600&auto=format&fit=crop&q=80",
+    packsBannerTitle: "🎁 PACKS & PROMOCIONES",
+    packsBannerSubtitle: "Arma tu previa con los mejores combos y packs de licores y cervezas",
+    packsProductIds: [2, 5, 6, 9, 10, 11],
     footerLogo: "",
     footerDescription: "Tu botillería y minimarket de confianza con despacho rápido a domicilio.",
     socialInstagram: "https://instagram.com",
