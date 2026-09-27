@@ -1950,12 +1950,7 @@ export default function Storefront() {
         </div>
       )}
 
-      {view === "client" && settings.contingencyMode && (
-        <div className="bg-red-950/95 border-b-2 border-red-500 text-red-200 px-4 py-2.5 text-xs sm:text-sm font-bold text-center flex items-center justify-center gap-2 shadow-xl animate-pulse z-40 relative">
-          <Ban size={18} className="text-red-400 shrink-0" />
-          <span>{settings.contingencyMessage || "🚨 MODO CONTINGENCIA ACTIVADO: La recepción de pedidos se encuentra pausada temporalmente."}</span>
-        </div>
-      )}
+
 
       {/* Mobile Navigation Drawer */}
       {view === "client" && mobileNavDrawerOpen && (
@@ -2132,7 +2127,7 @@ export default function Storefront() {
       )}
 
       {view === "client" && (
-        <header className="fixed top-0 left-0 right-0 z-50 bg-black text-white shadow-2xl select-none">
+        <header className="sticky top-0 z-50 bg-black text-white shadow-2xl select-none">
           {/* BARRA SUPERIOR (1/6): Degradado naranja-coral ultra delgado con tipografía equilibrada */}
           <div
             onClick={() => setShowComunasModal(true)}
@@ -2703,24 +2698,26 @@ export default function Storefront() {
               </div>
             </div>
           )}
+
+          {/* 3ra DIVISIÓN DEL ENCABEZADO: Aviso de Horario de Atención */}
+          {!isStoreOpen && (
+            <div className="w-full bg-[#1a0f00] border-t border-b border-amber-600/30 px-4 py-2 shadow-md">
+              <div className="w-full max-w-[1500px] mx-auto px-3 sm:px-6 md:px-8 flex items-center justify-center gap-2.5">
+                <span className="text-amber-400 text-sm leading-none flex-shrink-0 animate-pulse">🕐</span>
+                <p className="text-[11px] xs:text-xs sm:text-[13px] text-amber-300 font-bold leading-normal m-0 text-center">
+                  <span>Estamos fuera de nuestro horario de atención. </span>
+                  <span className="text-gray-400 font-normal hidden xs:inline">Puedes revisar el catálogo y armar tu carrito (recepción de pedidos desde las </span>
+                  <span className="text-[#ffd025] font-black">{settings.openTime ?? "11:00"}</span>
+                  <span className="text-gray-400 font-normal hidden xs:inline">)</span>
+                </p>
+              </div>
+            </div>
+          )}
         </header>
       )}
 
       {view === "client" && (
-        <div className="pt-[76px] sm:pt-[84px]">
-        {/* Business hours banner (contingency banner is admin-only, hidden from clients) */}
-        {!isStoreOpen && (
-          <div className="bg-[#1a0f00] border-b border-amber-600/40 px-4 py-3">
-            <div className="w-full px-3 sm:px-6 md:px-8 flex items-start gap-3">
-              <span className="text-amber-400 text-base leading-none mt-0.5 flex-shrink-0">🕐</span>
-              <p className="text-[13px] text-amber-300 leading-snug">
-                <span className="font-bold">Estamos fuera de nuestro horario de atención.</span>{" "}
-                Puedes revisar nuestro catálogo y armar tu carrito, pero la recepción de pedidos se habilitará a las{" "}
-                <span className="font-black text-amber-400">{settings.openTime ?? "11:00"}</span>.
-              </p>
-            </div>
-          </div>
-        )}
+        <div className="w-full">
         <main className="relative">
           {optionModalInfo && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -3212,49 +3209,47 @@ export default function Storefront() {
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full">
-                        {promoProducts.map((product, idx) => (
+                      <div className="grid grid-cols-4 gap-x-2 sm:gap-x-4 w-full items-stretch">
+                        {promoProducts.slice(0, 4).map((product) => (
                           <div
                             key={product.id}
-                            className={`group flex flex-col justify-between h-full w-full ${
-                              idx >= 3 ? "hidden md:flex" : "flex"
-                            }`}
+                            className="group flex flex-col justify-between h-full w-full bg-white/[0.02] border border-white/5 p-2 sm:p-3 hover:border-[#ffd025]/30 transition-all"
                           >
                             <div>
-                              <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1.5 sm:mb-2">
+                              <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-2 sm:mb-3">
                                 {product.image ? (
                                   <img
                                     src={product.image}
                                     alt={product.name}
                                     loading="lazy"
                                     decoding="async"
-                                    className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300"
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                     onError={(e) => {
                                       (e.currentTarget as HTMLImageElement).src =
                                         "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
                                     }}
                                   />
                                 ) : (
-                                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-none">
-                                    <Package size={20} className="text-[#ffd025]/70" />
-                                    <span className="text-[8px] sm:text-[10px] mt-0.5 font-semibold uppercase">Fellas</span>
+                                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5">
+                                    <Package size={22} className="text-[#ffd025]/70" />
+                                    <span className="text-[9px] mt-0.5 font-semibold uppercase">Fellas</span>
                                   </div>
                                 )}
 
                                 <div className="absolute top-0 left-0 z-10">
-                                  <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
+                                  <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider shadow">
                                     PROMO
                                   </span>
                                 </div>
                               </div>
 
-                              <div className="h-3.5 sm:h-4 flex items-center mb-0.5 overflow-hidden">
+                              <div className="h-4 flex items-center mb-0.5 overflow-hidden">
                                 {(product.aisle || product.category) ? (
-                                  <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
+                                  <span className="text-[8px] sm:text-[10px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
                                     {product.aisle || product.category}
                                   </span>
                                 ) : (
-                                  <span className="text-[7.5px] sm:text-[9px] font-medium uppercase tracking-wider text-transparent select-none">
+                                  <span className="text-[8px] sm:text-[10px] font-medium uppercase tracking-wider text-transparent select-none">
                                     -
                                   </span>
                                 )}
@@ -3262,26 +3257,26 @@ export default function Storefront() {
 
                               <h4
                                 title={product.name}
-                                className="text-[9.5px] xs:text-[10px] sm:text-[11.5px] md:text-[12px] font-semibold text-white leading-tight line-clamp-2 h-7 sm:h-8 md:h-8.5 block w-full group-hover:text-[#ffd025] transition-colors"
+                                className="text-[10px] sm:text-[12px] md:text-[13px] font-bold text-white leading-tight line-clamp-2 h-8 sm:h-9 block w-full group-hover:text-[#ffd025] transition-colors"
                               >
                                 {product.name}
                               </h4>
                             </div>
 
-                            <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1">
-                              <span className="text-[11px] sm:text-xs md:text-sm font-black text-[#ffd025] truncate">
+                            <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between gap-1">
+                              <span className="text-xs sm:text-sm md:text-base font-black text-[#ffd025] truncate">
                                 ${Number(product.price || 0).toLocaleString("es-CL")}
                               </span>
 
                               <button
                                 onClick={() => handleAddToCartClick(product)}
                                 disabled={!isStoreOpen}
-                                className="h-6 px-1.5 sm:px-2.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 rounded-none hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                                className="h-7 px-2 sm:px-3 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                                 title="Añadir al carrito"
                                 aria-label="Añadir al carrito"
                               >
-                                <Plus size={12} strokeWidth={2.5} />
-                                <span className="hidden sm:inline text-[10px]">Añadir</span>
+                                <Plus size={13} strokeWidth={2.5} />
+                                <span className="hidden sm:inline">Añadir</span>
                               </button>
                             </div>
                           </div>
@@ -3323,51 +3318,51 @@ export default function Storefront() {
                         />
                       </div>
 
-                      {/* VERSIÓN PARA CELULAR (MOBILE): Primera vista de 6 productos + Botón de Ver más */}
+                      {/* VERSIÓN PARA CELULAR (MOBILE): 2 filas horizontales de 3 productos (3 y 3) = 6 productos */}
                       <div className="md:hidden">
-                        <div className="grid grid-cols-2 xs:grid-cols-3 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full">
-                          {homeCollectionProducts.map((product) => (
+                        <div className="grid grid-cols-3 gap-x-2 gap-y-4 items-stretch w-full">
+                          {homeCollectionProducts.slice(0, 6).map((product) => (
                             <div
                               key={product.id}
-                              className="group flex flex-col justify-between h-full w-full"
+                              className="group flex flex-col justify-between h-full w-full bg-white/[0.02] border border-white/5 p-1.5"
                             >
                               <div>
-                                <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1.5 sm:mb-2">
+                                <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1">
                                   {product.image ? (
                                     <img
                                       src={product.image}
                                       alt={product.name}
                                       loading="lazy"
                                       decoding="async"
-                                      className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300"
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                       onError={(e) => {
                                         (e.currentTarget as HTMLImageElement).src =
                                           "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
                                       }}
                                     />
                                   ) : (
-                                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-none">
-                                      <Package size={20} className="text-[#ffd025]/70" />
-                                      <span className="text-[8px] sm:text-[10px] mt-0.5 font-semibold uppercase">Fellas</span>
+                                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5">
+                                      <Package size={16} className="text-[#ffd025]/70" />
+                                      <span className="text-[7px] mt-0.5 font-semibold uppercase">Fellas</span>
                                     </div>
                                   )}
 
                                   {product.oferta && (
                                     <div className="absolute top-0 left-0 z-10">
-                                      <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
+                                      <span className="px-1 py-0.5 bg-red-600 text-white text-[7px] font-black uppercase tracking-wider shadow">
                                         OFERTA
                                       </span>
                                     </div>
                                   )}
                                 </div>
 
-                                <div className="h-3.5 sm:h-4 flex items-center mb-0.5 overflow-hidden">
+                                <div className="h-3 flex items-center mb-0.5 overflow-hidden">
                                   {(product.subcategory || product.category || product.aisle) ? (
-                                    <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
+                                    <span className="text-[7px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
                                       {product.subcategory || product.category || product.aisle}
                                     </span>
                                   ) : (
-                                    <span className="text-[7.5px] sm:text-[9px] font-medium uppercase tracking-wider text-transparent select-none">
+                                    <span className="text-[7px] font-medium uppercase tracking-wider text-transparent select-none">
                                       -
                                     </span>
                                   )}
@@ -3375,26 +3370,25 @@ export default function Storefront() {
 
                                 <h4
                                   title={product.name}
-                                  className="text-[9.5px] xs:text-[10px] sm:text-[11.5px] md:text-[12px] font-semibold text-white leading-tight line-clamp-2 h-7 sm:h-8 md:h-8.5 block w-full group-hover:text-[#ffd025] transition-colors"
+                                  className="text-[9px] font-bold text-white leading-tight line-clamp-2 h-7 block w-full group-hover:text-[#ffd025] transition-colors"
                                 >
                                   {product.name}
                                 </h4>
                               </div>
 
-                              <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1">
-                                <span className="text-[11px] sm:text-xs md:text-sm font-black text-[#ffd025] truncate">
+                              <div className="mt-1 pt-1 border-t border-white/10 flex items-center justify-between gap-0.5">
+                                <span className="text-[10px] font-black text-[#ffd025] truncate">
                                   ${Number(product.price || 0).toLocaleString("es-CL")}
                                 </span>
 
                                 <button
                                   onClick={() => handleAddToCartClick(product)}
                                   disabled={!isStoreOpen}
-                                  className="h-6 px-1.5 sm:px-2.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 rounded-none hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                                  title="Añadir al carrito"
-                                  aria-label="Añadir al carrito"
+                                  className="h-5 px-1.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[9px] uppercase transition-all flex items-center justify-center gap-0.5 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                                  title="Añadir"
+                                  aria-label="Añadir"
                                 >
-                                  <Plus size={12} strokeWidth={2.5} />
-                                  <span className="hidden sm:inline text-[10px]">Añadir</span>
+                                  <Plus size={10} strokeWidth={2.5} />
                                 </button>
                               </div>
                             </div>
@@ -3402,12 +3396,11 @@ export default function Storefront() {
                         </div>
                       </div>
 
-                      {/* VERSIÓN ESCRITORIO (DESKTOP) */}
+                      {/* VERSIÓN ESCRITORIO (DESKTOP): 10 productos */}
                       {!isFiltered ? (
-                        /* Si no hay filtro activo en PC (Home inicial): Mostrar la Selección Manual de Colecciones */
                         <div className="hidden md:block">
-                          <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full">
-                            {homeCollectionProducts.map((product) => (
+                          <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-5 xl:grid-cols-5 gap-x-3.5 gap-y-6 items-stretch w-full">
+                            {homeCollectionProducts.slice(0, 10).map((product) => (
                               <div
                                 key={product.id}
                                 className="group flex flex-col justify-between h-full w-full"
