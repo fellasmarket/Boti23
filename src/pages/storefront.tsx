@@ -669,6 +669,45 @@ export default function Storefront() {
   const [collapsedAisles, setCollapsedAisles] = useState<Record<string, boolean>>({});
   const [adminCategory, setAdminCategory] = useState<string>("Todas");
   const [adminProductSearch, setAdminProductSearch] = useState<string>("");
+  const [contingencyProductSearch, setContingencyProductSearch] = useState<string>("");
+  const [contingencyStatusFilter, setContingencyStatusFilter] = useState<"all" | "active" | "inactive">("all");
+
+  const toggleProductContingency = (prod: Product) => {
+    const nextVal = prod.contingencyEnabled === false;
+    queryClient.setQueryData(getGetMenuQueryKey(), (old: any) =>
+      old
+        ? {
+            ...old,
+            products: old.products.map((p: any) =>
+              p.id === prod.id ? { ...p, contingencyEnabled: nextVal } : p
+            ),
+          }
+        : old
+    );
+    updateProductMut.mutate({
+      id: prod.id,
+      data: { ...prod, contingencyEnabled: nextVal },
+    });
+  };
+
+  const batchProductContingency = (prods: Product[], enable: boolean) => {
+    const ids = prods.map((p) => p.id);
+    queryClient.setQueryData(getGetMenuQueryKey(), (old: any) =>
+      old
+        ? {
+            ...old,
+            products: old.products.map((p: any) =>
+              ids.includes(p.id) ? { ...p, contingencyEnabled: enable } : p
+            ),
+          }
+        : old
+    );
+    fetch("/api/admin/products/contingency-batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids, enable }),
+    }).catch(() => {});
+  };
 
   const buyerCategoriesRef = useDragScroll();
   const buyerAislesRef = useDragScroll();
@@ -7438,10 +7477,10 @@ export default function Storefront() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
                     <div>
                       <span className="text-sm font-black text-[#ffd025] uppercase tracking-wider block">
-                        2. Configuración Individual por Pasillo / Categoría
+                        2. Configuración Individual por Pasillo y Selección de Productos
                       </span>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        Habilita o deshabilita cada pasillo de forma independiente para la versión de contingencia de la tienda.
+                        Habilita o deshabilita los productos que estarán disponibles durante la contingencia. Usa el buscador rápido abajo para encontrar productos.
                       </p>
                     </div>
 
@@ -7459,7 +7498,7 @@ export default function Storefront() {
                         }}
                         className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-xl text-[10.5px] font-bold uppercase transition-colors"
                       >
-                        ⚡ Habilitar Todos
+                        ⚡ Habilitar Todos Pasillos
                       </button>
                       <button
                         type="button"
@@ -7473,8 +7512,80 @@ export default function Storefront() {
                         }}
                         className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 rounded-xl text-[10.5px] font-bold uppercase transition-colors"
                       >
-                        🚫 Deshabilitar Todos
+                        🚫 Deshabilitar Todos Pasillos
                       </button>
+                    </div>
+                  </div>
+
+                  {/* BUSCADOR DE PRODUCTOS Y FILTROS EN MODO CONTINGENCIA */}
+                  <div className="bg-[#181826] p-4 rounded-2xl border border-amber-500/30 space-y-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                      <div className="relative flex-1">
+                        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-400" />
+                        <input
+                          type="text"
+                          value={contingencyProductSearch}
+                          onChange={(e) => setContingencyProductSearch(e.target.value)}
+                          placeholder="🔍 Buscar productos para habilitar/deshabilitar en contingencia..."
+                          className="w-full bg-[#12121d] border border-amber-500/30 rounded-xl pl-10 pr-8 py-2.5 text-white text-xs focus:border-[#ffd025] focus:outline-none placeholder-gray-500"
+                        />
+                        {contingencyProductSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setContingencyProductSearch("")}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <select
+                          value={contingencyStatusFilter}
+                          onChange={(e) => setContingencyStatusFilter(e.target.value as any)}
+                          className="bg-[#12121d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white font-bold focus:outline-none cursor-pointer"
+                        >
+                          <option value="all">Ver Todos los Estados</option>
+                          <option value="active">✓ Solo Habilitados</option>
+                          <option value="inactive">✕ Solo Inactivos</option>
+                        </select>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const filtered = products.filter((p) => {
+                              if (contingencyProductSearch.trim()) {
+                                const q = normalize(contingencyProductSearch.trim());
+                                if (!normalize(p.name).includes(q) && !normalize(p.category || "").includes(q) && !normalize(p.aisle || "").includes(q)) return false;
+                              }
+                              return true;
+                            });
+                            batchProductContingency(filtered, true);
+                            showToast(`Habilitados ${filtered.length} productos filtrados`);
+                          }}
+                          className="px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold transition-colors shrink-0"
+                        >
+                          ✓ Marcar Visibles
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const filtered = products.filter((p) => {
+                              if (contingencyProductSearch.trim()) {
+                                const q = normalize(contingencyProductSearch.trim());
+                                if (!normalize(p.name).includes(q) && !normalize(p.category || "").includes(q) && !normalize(p.aisle || "").includes(q)) return false;
+                              }
+                              return true;
+                            });
+                            batchProductContingency(filtered, false);
+                            showToast(`Deshabilitados ${filtered.length} productos filtrados`);
+                          }}
+                          className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 rounded-xl text-xs font-bold transition-colors shrink-0"
+                        >
+                          ✕ Desmarcar Visibles
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -7483,8 +7594,28 @@ export default function Storefront() {
                     {allStoreAisles.map((aisleName) => {
                       const aisleConfig = (settingsDraft.contingencyAislesConfig || {})[aisleName] || {};
                       const isEnabled = aisleConfig.enabled !== false;
-                      const aisleProducts = products.filter((p) => p.aisle === aisleName || p.category === aisleName);
-                      const activeProductsCount = aisleProducts.filter((p) => p.contingencyEnabled !== false).length;
+                      const allAisleProds = products.filter((p) => p.aisle === aisleName || p.category === aisleName);
+                      
+                      const filteredAisleProducts = allAisleProds.filter((p) => {
+                        if (contingencyStatusFilter === "active" && p.contingencyEnabled === false) return false;
+                        if (contingencyStatusFilter === "inactive" && p.contingencyEnabled !== false) return false;
+                        if (contingencyProductSearch.trim()) {
+                          const q = normalize(contingencyProductSearch.trim());
+                          return (
+                            normalize(p.name).includes(q) ||
+                            normalize(p.category || "").includes(q) ||
+                            normalize(p.aisle || "").includes(q) ||
+                            normalize(p.subcategory || "").includes(q)
+                          );
+                        }
+                        return true;
+                      });
+
+                      const activeProductsCount = allAisleProds.filter((p) => p.contingencyEnabled !== false).length;
+
+                      if (contingencyProductSearch.trim() && filteredAisleProducts.length === 0) {
+                        return null;
+                      }
 
                       return (
                         <div
@@ -7513,7 +7644,7 @@ export default function Storefront() {
                                   </span>
                                 </div>
                                 <p className="text-[11px] text-gray-400 mt-0.5">
-                                  {activeProductsCount} de {aisleProducts.length} productos disponibles durante contingencia
+                                  {activeProductsCount} de {allAisleProds.length} productos disponibles durante contingencia
                                 </p>
                               </div>
                             </div>
@@ -7598,72 +7729,70 @@ export default function Storefront() {
                               <div className="pt-2 border-t border-white/5 space-y-2">
                                 <div className="flex items-center justify-between">
                                   <span className="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider">
-                                    Productos de "{aisleName}" habilitados en contingencia ({activeProductsCount} activos):
+                                    Productos de "{aisleName}" ({filteredAisleProducts.length} mostrados):
                                   </span>
                                   <div className="flex gap-1.5">
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        aisleProducts.forEach((prod) => {
-                                          if (prod.contingencyEnabled === false) {
-                                            updateProductMut.mutate({ id: prod.id, data: { contingencyEnabled: true } });
-                                          }
-                                        });
+                                        batchProductContingency(filteredAisleProducts, true);
                                         showToast(`Habilitados todos en "${aisleName}"`);
                                       }}
-                                      className="text-[9.5px] px-2 py-0.5 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded font-bold hover:bg-emerald-500/20 transition-colors"
+                                      className="text-[9.5px] px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded font-bold hover:bg-emerald-500/30 transition-colors"
                                     >
-                                      Marcar Todos
+                                      ✓ Marcar Todos
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        aisleProducts.forEach((prod) => {
-                                          if (prod.contingencyEnabled !== false) {
-                                            updateProductMut.mutate({ id: prod.id, data: { contingencyEnabled: false } });
-                                          }
-                                        });
+                                        batchProductContingency(filteredAisleProducts, false);
                                         showToast(`Desmarcados todos en "${aisleName}"`);
                                       }}
-                                      className="text-[9.5px] px-2 py-0.5 bg-red-500/10 text-red-300 border border-red-500/20 rounded font-bold hover:bg-red-500/20 transition-colors"
+                                      className="text-[9.5px] px-2.5 py-1 bg-red-500/20 text-red-300 border border-red-500/30 rounded font-bold hover:bg-red-500/30 transition-colors"
                                     >
-                                      Desmarcar Todos
+                                      ✕ Desmarcar Todos
                                     </button>
                                   </div>
                                 </div>
 
                                 {/* Grid de productos del pasillo */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
-                                  {aisleProducts.map((prod) => {
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-60 overflow-y-auto pr-1">
+                                  {filteredAisleProducts.map((prod) => {
                                     const prodActive = prod.contingencyEnabled !== false;
                                     return (
                                       <div
                                         key={prod.id}
-                                        className={`p-2 rounded-xl border flex items-center justify-between gap-2 transition-all ${
-                                          prodActive ? "bg-[#12121d] border-emerald-500/30" : "bg-[#101017]/60 border-white/5 opacity-60"
+                                        onClick={() => toggleProductContingency(prod)}
+                                        className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all cursor-pointer select-none ${
+                                          prodActive
+                                            ? "bg-emerald-950/30 border-emerald-500/50 shadow-md"
+                                            : "bg-[#101017]/80 border-white/10 opacity-60 hover:opacity-100"
                                         }`}
                                       >
-                                        <div className="flex items-center gap-2 min-w-0">
+                                        <div className="flex items-center gap-2.5 min-w-0">
                                           {prod.image ? (
-                                            <img src={prod.image} alt={prod.name} className="w-7 h-7 object-cover rounded bg-black shrink-0 border border-white/10" />
+                                            <img src={prod.image} alt={prod.name} className="w-8 h-8 object-cover rounded-lg bg-black shrink-0 border border-white/10" />
                                           ) : (
-                                            <div className="w-7 h-7 bg-white/5 rounded flex items-center justify-center shrink-0">
-                                              <Package size={12} className="text-gray-500" />
+                                            <div className="w-8 h-8 bg-white/5 rounded-lg flex items-center justify-center shrink-0">
+                                              <Package size={14} className="text-gray-500" />
                                             </div>
                                           )}
                                           <div className="min-w-0">
                                             <p className="text-xs font-bold text-white truncate">{prod.name}</p>
-                                            <p className="text-[9.5px] text-gray-400">${prod.price.toLocaleString("es-CL")}</p>
+                                            <p className="text-[10px] font-semibold text-[#ffd025]">${prod.price.toLocaleString("es-CL")}</p>
                                           </div>
                                         </div>
 
                                         <button
                                           type="button"
-                                          onClick={() => {
-                                            updateProductMut.mutate({ id: prod.id, data: { contingencyEnabled: !prodActive } });
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleProductContingency(prod);
                                           }}
-                                          className={`px-2 py-1 rounded text-[10px] font-bold uppercase transition-all shrink-0 ${
-                                            prodActive ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-white/5 text-gray-400 border border-white/10"
+                                          className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition-all shrink-0 ${
+                                            prodActive
+                                              ? "bg-emerald-500 text-black shadow-md"
+                                              : "bg-white/10 text-gray-400 border border-white/10 hover:bg-white/20 hover:text-white"
                                           }`}
                                         >
                                           {prodActive ? "✓ Activo" : "Inactivo"}
