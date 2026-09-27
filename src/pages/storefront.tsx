@@ -8243,29 +8243,29 @@ export default function Storefront() {
                         </div>
                       </div>
 
-                      {/* Excel & Bulk Controls */}
-                      <div className="flex items-center gap-2 flex-wrap">
+                      {/* Excel & Bulk Controls (Icon-only, single line) */}
+                      <div className="flex items-center gap-2 flex-nowrap shrink-0">
                         <button
                           type="button"
                           onClick={() => downloadProductsExcel(products)}
-                          title="Descargar catálogo actual en Excel"
-                          className="flex items-center gap-1.5 px-3 py-2 bg-green-700/20 border border-green-600/30 text-green-400 rounded-xl text-xs font-bold hover:bg-green-700/35 transition-colors"
+                          title="Exportar catálogo actual a Excel"
+                          className="flex items-center justify-center p-2.5 bg-green-700/20 border border-green-600/30 text-green-400 rounded-xl hover:bg-green-700/35 transition-colors shrink-0"
                         >
-                          <Download size={13} /> Exportar
+                          <Download size={15} />
                         </button>
                         <button
                           type="button"
                           onClick={handleDownloadTemplate}
                           title="Descargar plantilla Excel vacía con formato"
-                          className="flex items-center gap-1.5 px-3 py-2 bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-xl text-xs font-bold hover:bg-amber-500/30 transition-colors"
+                          className="flex items-center justify-center p-2.5 bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-xl hover:bg-amber-500/30 transition-colors shrink-0"
                         >
-                          <FileSpreadsheet size={13} /> Plantilla
+                          <FileSpreadsheet size={15} />
                         </button>
                         <label
                           title="Subir planilla Excel para importar productos"
-                          className="flex items-center gap-1.5 px-3 py-2 bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded-xl text-xs font-bold hover:bg-blue-600/30 transition-colors cursor-pointer"
+                          className="flex items-center justify-center p-2.5 bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded-xl hover:bg-blue-600/30 transition-colors cursor-pointer shrink-0"
                         >
-                          <Upload size={13} /> Subir Excel
+                          <Upload size={15} />
                           <input
                             type="file"
                             accept=".xlsx, .xls, .csv"
@@ -8277,9 +8277,9 @@ export default function Storefront() {
                           type="button"
                           onClick={handleDeleteAllProducts}
                           title="Eliminar todos los productos"
-                          className="flex items-center gap-1.5 px-3 py-2 bg-red-600/20 border border-red-500/30 text-red-400 rounded-xl text-xs font-bold hover:bg-red-600/30 transition-colors"
+                          className="flex items-center justify-center p-2.5 bg-red-600/20 border border-red-500/30 text-red-400 rounded-xl hover:bg-red-600/30 transition-colors shrink-0"
                         >
-                          <Trash2 size={13} /> Borrar Todo
+                          <Trash2 size={15} />
                         </button>
                       </div>
                     </div>
