@@ -549,7 +549,16 @@ export default function Storefront() {
   const [selectedComuna, setSelectedComuna] = useState("Santiago");
   const [activeAnnouncementIdx, setActiveAnnouncementIdx] = useState(0);
   const [showDedicatedProductsPage, setShowDedicatedProductsPage] = useState(false);
-  const [dedicatedViewMode, setDedicatedViewMode] = useState<"catalog" | "oportunidades" | "packs">("catalog");
+  const [dedicatedViewMode, setDedicatedViewMode] = useState<"catalog" | "oportunidades" | "packs" | "pasillo">("catalog");
+  const [dedicatedSearchQuery, setDedicatedSearchQuery] = useState("");
+  const [dedicatedSortBy, setDedicatedSortBy] = useState<"default" | "name_asc" | "name_desc" | "price_asc" | "price_desc">("default");
+  const [dedicatedSubcatFilter, setDedicatedSubcatFilter] = useState<string>("all");
+
+  useEffect(() => {
+    if (searchQuery.trim().length > 0) {
+      setShowDedicatedProductsPage(false);
+    }
+  }, [searchQuery]);
 
   const headerAnnouncements = useMemo(() => {
     if (settings.announcements && Array.isArray(settings.announcements) && settings.announcements.length > 0) {
@@ -919,35 +928,47 @@ export default function Storefront() {
   }, [products, settings.contingencyMode, settings.contingencyAislesConfig]);
 
   const filteredProducts = useMemo(() => {
-    if (debouncedSearch) {
-      const q = normalize(debouncedSearch);
-      const matchedCategory = categories.find((cat) => normalize(cat).includes(q));
-      if (matchedCategory) return baseProducts.filter((p) => p.category === matchedCategory);
-      const matchedAisle = aisles.find((a) => normalize(a).includes(q));
-      if (matchedAisle) return baseProducts.filter((p) => p.aisle === matchedAisle);
-      return baseProducts.filter((p) => fuzzyMatch(debouncedSearch, p.name));
+    if (debouncedSearch && debouncedSearch.trim().length > 0) {
+      const q = normalize(debouncedSearch.trim());
+      const terms = q.split(/\s+/).filter(Boolean);
+      return baseProducts.filter((p) => {
+        if (p.hidden) return false;
+        const nameNorm = normalize(p.name || "");
+        const catNorm = normalize(p.category || "");
+        const aisleNorm = normalize(p.aisle || "");
+        const subNorm = normalize(p.subcategory || "");
+
+        return terms.every((term) =>
+          nameNorm.includes(term) ||
+          catNorm.includes(term) ||
+          aisleNorm.includes(term) ||
+          subNorm.includes(term) ||
+          fuzzyMatch(term, p.name)
+        );
+      });
     }
     if (navQuickFilter === "oportunidades") {
-      return baseProducts.filter((p) => p.oferta || p.bestseller);
+      return baseProducts.filter((p) => !p.hidden && (p.oferta || p.bestseller));
     }
     if (navQuickFilter === "packs") {
       return baseProducts.filter(
         (p) =>
-          p.category?.toLowerCase().includes("pack") ||
-          p.subcategory?.toLowerCase().includes("pack") ||
-          p.aisle?.toLowerCase().includes("pack") ||
-          p.name.toLowerCase().includes("pack") ||
-          p.name.toLowerCase().includes("combo")
+          !p.hidden &&
+          (p.category?.toLowerCase().includes("pack") ||
+            p.subcategory?.toLowerCase().includes("pack") ||
+            p.aisle?.toLowerCase().includes("pack") ||
+            p.name.toLowerCase().includes("pack") ||
+            p.name.toLowerCase().includes("combo"))
       );
     }
     if (activeAisle) {
-      return baseProducts.filter((p) => p.aisle === activeAisle);
+      return baseProducts.filter((p) => !p.hidden && p.aisle === activeAisle);
     }
     if (activeCategory) {
-      return baseProducts.filter((p) => p.category === activeCategory);
+      return baseProducts.filter((p) => !p.hidden && p.category === activeCategory);
     }
-    return baseProducts;
-  }, [baseProducts, activeCategory, activeAisle, debouncedSearch, categories, aisles, navQuickFilter]);
+    return baseProducts.filter((p) => !p.hidden);
+  }, [baseProducts, activeCategory, activeAisle, debouncedSearch, navQuickFilter]);
 
   const homeCollectionProducts = useMemo(() => {
     const customIds = settings.homeCollectionProductIds ?? [];
@@ -2839,46 +2860,155 @@ export default function Storefront() {
                 </div>
 
                 {/* Vista Dedicada de Productos segun Modo */}
-                {(dedicatedViewMode === "oportunidades" || dedicatedViewMode === "packs") ? (() => {
+                {(() => {
                   const isOpp = dedicatedViewMode === "oportunidades";
-                  const rawIds = isOpp ? settings.opportunitiesProductIds : settings.packsProductIds;
-                  let selectedList: Product[] = [];
-                  if (rawIds && Array.isArray(rawIds) && rawIds.length > 0) {
-                    selectedList = rawIds
-                      .map((id) => products.find((p) => p.id === id && !p.hidden))
-                      .filter(Boolean) as Product[];
-                  }
-                  if (selectedList.length === 0) {
-                    selectedList = isOpp
-                      ? products.filter((p) => !p.hidden && (p.oferta || p.bestseller || (p.price && p.price < 12000)))
-                      : products.filter((p) => !p.hidden && (p.name.toLowerCase().includes("pack") || p.category?.toLowerCase().includes("pack") || p.aisle?.toLowerCase().includes("pack")));
+                  const isPacks = dedicatedViewMode === "packs";
+
+                  let rawList: Product[] = [];
+                  if (isOpp) {
+                    const rawIds = settings.opportunitiesProductIds;
+                    if (rawIds && Array.isArray(rawIds) && rawIds.length > 0) {
+                      rawList = rawIds.map((id) => products.find((p) => p.id === id && !p.hidden)).filter(Boolean) as Product[];
+                    }
+                    if (rawList.length === 0) {
+                      rawList = products.filter((p) => !p.hidden && (p.oferta || p.bestseller || (p.price && p.price < 12000)));
+                    }
+                  } else if (isPacks) {
+                    const rawIds = settings.packsProductIds;
+                    if (rawIds && Array.isArray(rawIds) && rawIds.length > 0) {
+                      rawList = rawIds.map((id) => products.find((p) => p.id === id && !p.hidden)).filter(Boolean) as Product[];
+                    }
+                    if (rawList.length === 0) {
+                      rawList = products.filter((p) => !p.hidden && (p.name.toLowerCase().includes("pack") || p.category?.toLowerCase().includes("pack") || p.aisle?.toLowerCase().includes("pack")));
+                    }
+                  } else {
+                    rawList = products.filter((p) => !p.hidden);
                   }
 
-                  // Aplicar filtro si el usuario hizo clic en un pasillo o categoría del submenú
-                  const finalProducts = selectedList.filter((p) => {
+                  // 1. Filtrar por pasillo/categoría activo del menú superior si existe
+                  let processed = rawList.filter((p) => {
                     if (activeAisle && p.aisle !== activeAisle) return false;
                     if (activeCategory && p.category !== activeCategory) return false;
                     return true;
                   });
 
+                  // 2. Extraer subcategorías únicas presentes
+                  const availableSubcats = Array.from(
+                    new Set(processed.map((p) => p.subcategory || p.category).filter(Boolean))
+                  );
+
+                  // 3. Filtrar por subcategoría elegida en el menú desplegable
+                  if (dedicatedSubcatFilter !== "all") {
+                    processed = processed.filter(
+                      (p) => p.subcategory === dedicatedSubcatFilter || p.category === dedicatedSubcatFilter
+                    );
+                  }
+
+                  // 4. Filtrar por búsqueda interna
+                  if (dedicatedSearchQuery.trim().length > 0) {
+                    const q = normalize(dedicatedSearchQuery.trim());
+                    processed = processed.filter((p) =>
+                      normalize(p.name).includes(q) ||
+                      normalize(p.category || "").includes(q) ||
+                      normalize(p.aisle || "").includes(q) ||
+                      normalize(p.subcategory || "").includes(q)
+                    );
+                  }
+
+                  // 5. Aplicar ordenamiento
+                  if (dedicatedSortBy === "price_asc") {
+                    processed.sort((a, b) => (a.price || 0) - (b.price || 0));
+                  } else if (dedicatedSortBy === "price_desc") {
+                    processed.sort((a, b) => (b.price || 0) - (a.price || 0));
+                  } else if (dedicatedSortBy === "name_asc") {
+                    processed.sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"));
+                  } else if (dedicatedSortBy === "name_desc") {
+                    processed.sort((a, b) => (b.name || "").localeCompare(a.name || "", "es"));
+                  }
+
                   return (
                     <div className="space-y-6 mb-12">
+                      {/* BARRA DE FILTROS & ORDENAMIENTO EN PESTAÑA DEDICADA */}
+                      <div className="bg-[#141420]/90 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-xl">
+                        {/* Buscador de filtro en tiempo real */}
+                        <div className="flex-1 min-w-[180px] relative">
+                          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <input
+                            type="text"
+                            value={dedicatedSearchQuery}
+                            onChange={(e) => setDedicatedSearchQuery(e.target.value)}
+                            placeholder="Buscar en esta sección..."
+                            className="w-full bg-[#1c1c2a] border border-white/10 rounded-xl pl-9 pr-8 py-2 text-white text-xs focus:border-[#ffd025] focus:outline-none placeholder-gray-500"
+                          />
+                          {dedicatedSearchQuery && (
+                            <button
+                              onClick={() => setDedicatedSearchQuery("")}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 overflow-x-auto shrink-0 scrollbar-none">
+                          {/* Filtro por Subcategoría / Etiqueta */}
+                          {availableSubcats.length > 0 && (
+                            <select
+                              value={dedicatedSubcatFilter}
+                              onChange={(e) => setDedicatedSubcatFilter(e.target.value)}
+                              className="bg-[#1c1c2a] border border-white/10 rounded-xl px-3 py-2 text-white text-xs font-semibold focus:border-[#ffd025] focus:outline-none cursor-pointer"
+                            >
+                              <option value="all">Todas las subcategorías</option>
+                              {availableSubcats.map((sub) => (
+                                <option key={sub} value={sub}>{sub}</option>
+                              ))}
+                            </select>
+                          )}
+
+                          {/* Menú de Ordenamiento */}
+                          <div className="flex items-center gap-1.5 bg-[#1c1c2a] border border-white/10 rounded-xl px-2.5 py-1.5 shrink-0">
+                            <Filter size={13} className="text-[#ffd025]" />
+                            <select
+                              value={dedicatedSortBy}
+                              onChange={(e) => setDedicatedSortBy(e.target.value as any)}
+                              className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer"
+                            >
+                              <option value="default" className="bg-[#1a1a26] text-white">Ordenar: Destacados</option>
+                              <option value="price_asc" className="bg-[#1a1a26] text-white">Precio: Menor a Mayor ⬇️</option>
+                              <option value="price_desc" className="bg-[#1a1a26] text-white">Precio: Mayor a Menor ⬆️</option>
+                              <option value="name_asc" className="bg-[#1a1a26] text-white">Nombre: A ➔ Z</option>
+                              <option value="name_desc" className="bg-[#1a1a26] text-white">Nombre: Z ➔ A</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Header con conteo */}
                       <div className="flex items-center justify-between pb-2 border-b border-white/10">
                         <span className="text-xs sm:text-sm font-black uppercase text-[#ffd025] tracking-wider">
-                          {isOpp ? "Lista de Productos en Oportunidades" : "Lista de Productos en Packs"}
+                          {isOpp
+                            ? "Lista de Oportunidades"
+                            : isPacks
+                            ? "Lista de Packs & Combos"
+                            : activeAisle
+                            ? `Pasillo: ${activeAisle}`
+                            : activeCategory
+                            ? `Categoría: ${activeCategory}`
+                            : "Todos los Productos"}
                         </span>
                         <span className="text-[10px] text-gray-400 font-bold uppercase">
-                          {finalProducts.length} {finalProducts.length === 1 ? "producto" : "productos"}
+                          {processed.length} {processed.length === 1 ? "producto" : "productos"}
                         </span>
                       </div>
 
-                      {finalProducts.length === 0 ? (
+                      {/* Grilla de Productos */}
+                      {processed.length === 0 ? (
                         <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
-                          <p className="text-xs text-gray-400">No hay productos seleccionados en esta categoría.</p>
+                          <p className="text-xs text-gray-400">No hay productos que coincidan con la búsqueda o filtros seleccionados.</p>
                         </div>
                       ) : (
                         <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full">
-                          {finalProducts.map((product) => (
+                          {processed.map((product) => (
                             <div
                               key={product.id}
                               className="group flex flex-col justify-between h-full w-full"
@@ -2904,10 +3034,10 @@ export default function Storefront() {
                                     </div>
                                   )}
 
-                                  {(product.oferta || isOpp || isOpp) && (
+                                  {(product.oferta || isOpp || isPacks) && (
                                     <div className="absolute top-0 left-0 z-10">
-                                      <span className={`px-1.5 py-0.5 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow ${isOpp ? "bg-amber-500" : "bg-purple-600"}`}>
-                                        {isOpp ? "OFERTA" : "PACK"}
+                                      <span className={`px-1.5 py-0.5 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow ${isOpp ? "bg-amber-500" : isPacks ? "bg-purple-600" : "bg-red-600"}`}>
+                                        {isOpp ? "OFERTA" : isPacks ? "PACK" : "PROMO"}
                                       </span>
                                     </div>
                                   )}
@@ -2955,105 +3085,7 @@ export default function Storefront() {
                       )}
                     </div>
                   );
-                })() : (
-                  /* Sección Amplia y Dedicada de Productos por Pasillos (Catalog) */
-                  <div className="space-y-10 sm:space-y-12 mb-8">
-                    {activeAisles.map((aisleName) => {
-                      const aisleProducts = groupedByAisle[aisleName] || [];
-                      if (aisleProducts.length === 0) return null;
-
-                      return (
-                        <div key={aisleName} id={`aisle-dedicated-${aisleName}`} className="scroll-mt-24">
-                          <div className="flex items-center gap-3 mb-3.5 sm:mb-4">
-                            <h3 className="text-sm sm:text-base font-black uppercase tracking-wider text-[#ffd025]">
-                              {aisleName}
-                            </h3>
-                            <div className="flex-1 border-t border-white/15" />
-                            <span className="text-[10px] text-gray-400 font-semibold uppercase">
-                              {aisleProducts.length} {aisleProducts.length === 1 ? "producto" : "productos"}
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full">
-                            {aisleProducts.map((product) => (
-                              <div
-                                key={product.id}
-                                className="group flex flex-col justify-between h-full w-full"
-                              >
-                                <div>
-                                  <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1.5 sm:mb-2">
-                                    {product.image ? (
-                                      <img
-                                        src={product.image}
-                                        alt={product.name}
-                                        loading="lazy"
-                                        decoding="async"
-                                        className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300"
-                                        onError={(e) => {
-                                          (e.currentTarget as HTMLImageElement).src =
-                                            "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
-                                        }}
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-none">
-                                        <Package size={20} className="text-[#ffd025]/70" />
-                                        <span className="text-[8px] sm:text-[10px] mt-0.5 font-semibold uppercase">Fellas</span>
-                                      </div>
-                                    )}
-
-                                    {product.oferta && (
-                                      <div className="absolute top-0 left-0 z-10">
-                                        <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
-                                          OFERTA
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  <div className="h-3.5 sm:h-4 flex items-center mb-0.5 overflow-hidden">
-                                    {(product.subcategory || product.category || product.aisle) ? (
-                                      <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
-                                        {product.subcategory || product.category || product.aisle}
-                                      </span>
-                                    ) : (
-                                      <span className="text-[7.5px] sm:text-[9px] font-medium uppercase tracking-wider text-transparent select-none">
-                                        -
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  <h4
-                                    title={product.name}
-                                    className="text-[9.5px] xs:text-[10px] sm:text-[11.5px] md:text-[12px] font-semibold text-white leading-tight line-clamp-2 h-7 sm:h-8 md:h-8.5 block w-full group-hover:text-[#ffd025] transition-colors"
-                                  >
-                                    {product.name}
-                                  </h4>
-                                </div>
-
-                                <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1">
-                                  <span className="text-[11px] sm:text-xs md:text-sm font-black text-[#ffd025] truncate">
-                                    ${Number(product.price || 0).toLocaleString("es-CL")}
-                                  </span>
-
-                                  <button
-                                    onClick={() => handleAddToCartClick(product)}
-                                    disabled={!isStoreOpen}
-                                    className="h-6 px-1.5 sm:px-2.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 rounded-none hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                                    title="Añadir al carrito"
-                                    aria-label="Añadir al carrito"
-                                  >
-                                    <Plus size={12} strokeWidth={2.5} />
-                                    <span className="hidden sm:inline text-[10px]">Añadir</span>
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                })()}
               </div>
             </div>
           ) : (
@@ -3402,11 +3434,37 @@ export default function Storefront() {
                         <div className="hidden md:block space-y-10 sm:space-y-12">
                           {activeAisles.map((aisleName, aisleIdx) => {
                             const rawAisleProducts = groupedByAisle[aisleName] || [];
-                            const aisleProducts = settings.contingencyMode ? rawAisleProducts.slice(0, 6) : rawAisleProducts;
+                            const aisleProducts = settings.contingencyMode ? rawAisleProducts.slice(0, 6) : rawAisleProducts.slice(0, 10);
                             if (aisleProducts.length === 0) return null;
 
                             return (
                               <div key={aisleName} id={`aisle-${aisleName}`} className="scroll-mt-24">
+                                <div className="flex items-center justify-between gap-3 mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <h3 className="text-sm sm:text-base font-black uppercase tracking-wider text-[#ffd025]">
+                                      {aisleName}
+                                    </h3>
+                                    <span className="text-[10px] text-gray-400 font-semibold uppercase">
+                                      ({rawAisleProducts.length} {rawAisleProducts.length === 1 ? "producto" : "productos"})
+                                    </span>
+                                  </div>
+                                  {rawAisleProducts.length > 10 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveAisle(aisleName);
+                                        setActiveCategory("");
+                                        setShowDedicatedProductsPage(true);
+                                        setDedicatedViewMode("pasillo");
+                                        window.scrollTo({ top: 0, behavior: "smooth" });
+                                      }}
+                                      className="text-xs font-bold text-[#ffd025] hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-0 p-0"
+                                    >
+                                      <span>Ver más</span>
+                                      <ChevronRight size={14} />
+                                    </button>
+                                  )}
+                                </div>
                                 <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full">
                                   {aisleProducts.map((product) => (
                                     <div
