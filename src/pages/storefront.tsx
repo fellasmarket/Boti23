@@ -3129,49 +3129,72 @@ export default function Storefront() {
             </div>
           ) : (
             <>
-              {/* BANNER PRINCIPAL */}
-              {!searchQuery && effectiveSlides.length > 0 && (
-                <div className="w-full px-3 sm:px-6 md:px-8 mt-3 sm:mt-6">
-                  <div
-                    className="relative w-full h-36 sm:h-48 md:h-64 lg:h-[280px] xl:h-[320px] shadow-lg border border-white/10 bg-black select-none rounded-xl sm:rounded-2xl overflow-hidden"
-                    style={{ transform: "translateZ(0)", WebkitMaskImage: "-webkit-radial-gradient(white, black)" }}
-                  >
-                    {effectiveSlides.map((slide, i) => (
-                      <div
-                        key={i}
-                        className="absolute inset-0 transition-opacity duration-700"
-                        style={{ opacity: i === activeSlide ? 1 : 0, zIndex: i === activeSlide ? 2 : 1 }}
-                      >
-                        {slide.image && (
-                          <img
-                            loading={i === 0 ? "eager" : "lazy"}
-                            decoding="async"
-                            fetchPriority={i === 0 ? "high" : "auto"}
-                            src={slide.image}
-                            alt="Banner"
-                            className="w-full h-full object-cover"
-                          />
-                        )}
-                      </div>
-                    ))}
-                    {effectiveSlides.length > 1 && (
-                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
-                        {effectiveSlides.map((_, i) => (
-                          <button
-                            key={i}
-                            onClick={() => setActiveSlide(i)}
-                            className={`rounded-full transition-all duration-300 ${
-                              i === activeSlide
-                                ? "w-5 h-2 bg-[#ffd025]"
-                                : "w-2 h-2 bg-white/40 hover:bg-white/70"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    )}
+              {/* BANNER PRINCIPAL O BANNER DE PASILLO SELECCIONADO */}
+              {!searchQuery && (() => {
+                const selectedAisleObj = activeAisle ? aislesData.find((a) => a.name === activeAisle) : null;
+                const bannerToShow = selectedAisleObj?.bannerImage
+                  ? [{ image: selectedAisleObj.bannerImage, title: selectedAisleObj.bannerTitle, description: selectedAisleObj.bannerSubtitle }]
+                  : effectiveSlides;
+
+                if (bannerToShow.length === 0) return null;
+
+                return (
+                  <div className="w-full px-3 sm:px-6 md:px-8 mt-3 sm:mt-6">
+                    <div
+                      className="relative w-full h-36 sm:h-48 md:h-64 lg:h-[280px] xl:h-[320px] shadow-lg border border-white/10 bg-black select-none rounded-xl sm:rounded-2xl overflow-hidden"
+                      style={{ transform: "translateZ(0)", WebkitMaskImage: "-webkit-radial-gradient(white, black)" }}
+                    >
+                      {bannerToShow.map((slide, i) => (
+                        <div
+                          key={i}
+                          className="absolute inset-0 transition-opacity duration-700"
+                          style={{ opacity: i === activeSlide ? 1 : 0, zIndex: i === activeSlide ? 2 : 1 }}
+                        >
+                          {slide.image && (
+                            <img
+                              loading={i === 0 ? "eager" : "lazy"}
+                              decoding="async"
+                              fetchPriority={i === 0 ? "high" : "auto"}
+                              src={slide.image}
+                              alt="Banner"
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                          {selectedAisleObj && (slide.title || slide.description) && (
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4 sm:p-6">
+                              {slide.title && (
+                                <h3 className="text-white text-sm sm:text-lg md:text-xl font-black uppercase tracking-wider drop-shadow">
+                                  {slide.title}
+                                </h3>
+                              )}
+                              {slide.description && (
+                                <p className="text-[#ffd025] text-xs sm:text-sm font-bold mt-0.5 drop-shadow">
+                                  {slide.description}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {bannerToShow.length > 1 && !selectedAisleObj && (
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
+                          {bannerToShow.map((_, i) => (
+                            <button
+                              key={i}
+                              onClick={() => setActiveSlide(i)}
+                              className={`rounded-full transition-all duration-300 ${
+                                i === activeSlide
+                                  ? "w-5 h-2 bg-[#ffd025]"
+                                  : "w-2 h-2 bg-white/40 hover:bg-white/70"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* ESTADO DE FILTRO ACTIVO (CAMBIO DE PASILLO / CATEGORÍA DESDE EL ENCABEZADO) */}
               {(() => {
