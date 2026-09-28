@@ -61,7 +61,7 @@ export function GoogleReviews({ placeId, defaultRating = 4.9 }: GoogleReviewsPro
     const fetchPlaceDetails = async () => {
       try {
         const placeService = new placesLib.Place({ id: placeId });
-        await placeService.fetchFields({
+        const result = await placeService.fetchFields({
           fields: [
             "displayName",
             "rating",
@@ -70,20 +70,22 @@ export function GoogleReviews({ placeId, defaultRating = 4.9 }: GoogleReviewsPro
           ]
         });
 
+        const activePlace = result?.place || placeService;
+
         if (!isMounted) return;
 
-        if (placeService.rating !== undefined && placeService.rating !== null) {
-          setRating(placeService.rating);
+        if (activePlace.rating !== undefined && activePlace.rating !== null) {
+          setRating(activePlace.rating);
         }
-        if (placeService.userRatingCount !== undefined && placeService.userRatingCount !== null) {
-          setTotalRatingCount(placeService.userRatingCount);
+        if (activePlace.userRatingCount !== undefined && activePlace.userRatingCount !== null) {
+          setTotalRatingCount(activePlace.userRatingCount);
         }
-        if (placeService.displayName) {
-          setPlaceName(placeService.displayName);
+        if (activePlace.displayName) {
+          setPlaceName(activePlace.displayName);
         }
 
-        if (placeService.reviews && placeService.reviews.length > 0) {
-          const mappedReviews = placeService.reviews.slice(0, 5).map((r: any) => ({
+        if (activePlace.reviews && activePlace.reviews.length > 0) {
+          const mappedReviews = activePlace.reviews.slice(0, 5).map((r: any) => ({
             authorName: r.authorAttribution?.displayName || "Cliente de Google",
             authorPhotoUrl: r.authorAttribution?.photoUri || undefined,
             rating: r.rating || 5,
