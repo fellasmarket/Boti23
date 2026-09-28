@@ -262,8 +262,8 @@ const DEFAULT_DB: DatabaseSchema = {
     socialTiktok: "",
     socialWhatsapp: "",
     googleMapsPlaceId: "ChIJsQKhaXwlGJYRw_eFoWzOXyA",
-    googleMapsRating: 4.9,
-    googleMapsReviewsCount: 142,
+    googleMapsRating: 5.0,
+    googleMapsReviewsCount: 13,
     googleMapsReviews: [
       {
         id: "g-1",

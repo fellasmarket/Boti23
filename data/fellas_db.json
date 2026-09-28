@@ -87,8 +87,8 @@
     "socialTiktok": "",
     "socialWhatsapp": "",
     "googleMapsPlaceId": "ChIJsQKhaXwlGJYRw_eFoWzOXyA",
-    "googleMapsRating": 4.9,
-    "googleMapsReviewsCount": 142,
+    "googleMapsRating": 5.0,
+    "googleMapsReviewsCount": 13,
     "googleMapsReviews": [
       {
         "id": "g-1",
@@ -715,6 +715,16 @@
       "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
       "id": 4,
       "createdAt": "2026-09-28T02:21:42.049Z"
+    },
+    {
+      "ipAddress": "190.163.142.251",
+      "city": "Concepción",
+      "region": "Biobio",
+      "country": "Chile",
+      "path": "/",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+      "id": 5,
+      "createdAt": "2026-09-28T13:46:14.196Z"
     }
   ]
 }

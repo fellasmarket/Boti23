@@ -163,6 +163,7 @@ import {
   Star,
   LogIn,
   AlertTriangle,
+  ExternalLink,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { APIProvider } from "@vis.gl/react-google-maps";
@@ -748,6 +749,11 @@ export default function Storefront() {
   const [featuredCollecSearch, setFeaturedCollecSearch] = useState("");
   const [featuredOportunidadesSearch, setFeaturedOportunidadesSearch] = useState("");
   const [featuredPacksSearch, setFeaturedPacksSearch] = useState("");
+  const [newReviewAuthor, setNewReviewAuthor] = useState("");
+  const [newReviewText, setNewReviewText] = useState("");
+  const [newReviewRating, setNewReviewRating] = useState(5);
+  const [newReviewTime, setNewReviewTime] = useState("Hace una semana");
+  const [showAddReviewForm, setShowAddReviewForm] = useState(false);
   const toggleSettingsSection = (sec: string) => {
     setOpenSettingsSections((p) => ({ ...p, [sec]: !p[sec] }));
   };
@@ -3616,8 +3622,11 @@ export default function Storefront() {
 
               {/* SECCIÓN #NUESTROSCLIENTES: Reseñas en Vivo Conectadas con Google Maps */}
               <GoogleReviews
-                placeId={settings.googleMapsPlaceId}
-                defaultRating={settings.googleMapsRating}
+                placeId={settings.googleMapsPlaceId || "ChIJsQKhaXwlGJYRw_eFoWzOXyA"}
+                defaultRating={settings.googleMapsRating || 5.0}
+                userRatingCount={settings.googleMapsReviewsCount || 13}
+                initialReviews={settings.googleMapsReviews}
+                placeName={settings.pageTitle || "Fella's Market 2"}
               />
             </>
           )}
@@ -6578,37 +6587,208 @@ export default function Storefront() {
                               </div>
                             </div>
 
-                            <div className="pt-3 border-t border-white/5 space-y-2 mt-3">
-                              <h5 className="text-[11px] font-black uppercase text-amber-400 tracking-wider flex items-center gap-1.5">
-                                <span>⭐</span> Configuración Reseñas Google Maps
-                              </h5>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="pt-4 border-t border-white/10 space-y-4 mt-3 bg-[#12121d] p-4 sm:p-5 rounded-2xl border border-white/5">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/10">
                                 <div>
-                                  <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Google Place ID (Opcional)</label>
+                                  <h5 className="text-xs font-black uppercase text-[#ffd025] tracking-wider flex items-center gap-1.5">
+                                    <span>⭐</span> Conexión & Gestor de Reseñas de Google Maps
+                                  </h5>
+                                  <p className="text-[11px] text-gray-400 mt-0.5">
+                                    Configura tu Place ID y administra las opiniones reales de clientes que se muestran en el pie de página.
+                                  </p>
+                                </div>
+                                <a
+                                  href={`https://www.google.com/maps/place/?q=place_id:${settingsDraft.googleMapsPlaceId || "ChIJsQKhaXwlGJYRw_eFoWzOXyA"}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-3 py-1.5 bg-white/5 hover:bg-[#ffd025]/20 border border-white/10 hover:border-[#ffd025]/40 text-[#ffd025] rounded-xl text-[10px] font-bold uppercase transition-all flex items-center gap-1.5 self-start sm:self-auto shrink-0"
+                                >
+                                  <MapPin size={12} className="text-red-400" /> Ver en Google Maps <ExternalLink size={10} />
+                                </a>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div className="sm:col-span-1">
+                                  <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Google Place ID</label>
                                   <input
                                     type="text"
-                                    value={settingsDraft.googleMapsPlaceId ?? ""}
+                                    value={settingsDraft.googleMapsPlaceId ?? "ChIJsQKhaXwlGJYRw_eFoWzOXyA"}
                                     onChange={(e) => setSettingsDraft({ ...settingsDraft, googleMapsPlaceId: e.target.value })}
-                                    className="w-full bg-[#181826] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#ffd025]"
-                                    placeholder="Ej: ChIJN1t_tDeuEmsRUsoyG83frY4"
+                                    className="w-full bg-[#181826] border border-white/10 rounded-xl p-2.5 text-white text-xs font-mono focus:border-[#ffd025]"
+                                    placeholder="ChIJsQKhaXwlGJYRw_eFoWzOXyA"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Calificación Promedio (Ej: 4.9)</label>
+                                  <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Calificación Estrellas (1 - 5)</label>
                                   <input
                                     type="number"
                                     step="0.1"
                                     max="5"
                                     min="1"
-                                    value={settingsDraft.googleMapsRating ?? 4.9}
+                                    value={settingsDraft.googleMapsRating ?? 5.0}
                                     onChange={(e) => setSettingsDraft({ ...settingsDraft, googleMapsRating: Number(e.target.value) })}
                                     className="w-full bg-[#181826] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#ffd025]"
+                                    placeholder="5.0"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Total de Opiniones</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={settingsDraft.googleMapsReviewsCount ?? 13}
+                                    onChange={(e) => setSettingsDraft({ ...settingsDraft, googleMapsReviewsCount: Number(e.target.value) })}
+                                    className="w-full bg-[#181826] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#ffd025]"
+                                    placeholder="13"
                                   />
                                 </div>
                               </div>
-                              <p className="text-[10px] text-gray-500">
-                                Se mostrarán las reseñas verificadas de Google Maps de forma automática antes del pie de página.
-                              </p>
+
+                              {/* Lista de Reseñas Configuradas */}
+                              <div className="space-y-3 pt-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-black text-white uppercase tracking-wider">
+                                    Reseñas Reales Visibles ({(settingsDraft.googleMapsReviews || []).length}):
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => setShowAddReviewForm(!showAddReviewForm)}
+                                      className="px-3 py-1 bg-[#ffd025] hover:bg-[#e6b800] text-black rounded-lg text-[10.5px] font-bold transition-all flex items-center gap-1 shadow"
+                                    >
+                                      <Plus size={12} /> {showAddReviewForm ? "Cerrar Formulario" : "Agregar Reseña Real"}
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Formulario para agregar reseña */}
+                                {showAddReviewForm && (
+                                  <div className="bg-[#181826] p-3.5 rounded-xl border border-[#ffd025]/30 space-y-3 animate-fade-in">
+                                    <span className="text-[10px] font-black text-[#ffd025] uppercase tracking-wider block">
+                                      ➕ Nueva Reseña de Cliente de Google Maps
+                                    </span>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                      <div>
+                                        <label className="block text-[9.5px] text-gray-400 uppercase font-bold mb-1">Nombre del Cliente *</label>
+                                        <input
+                                          type="text"
+                                          value={newReviewAuthor}
+                                          onChange={(e) => setNewReviewAuthor(e.target.value)}
+                                          placeholder="Ej: Juan Pérez"
+                                          className="w-full bg-[#12121d] border border-white/10 rounded-lg p-2 text-white text-xs"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-[9.5px] text-gray-400 uppercase font-bold mb-1">Calificación (1 - 5) *</label>
+                                        <select
+                                          value={newReviewRating}
+                                          onChange={(e) => setNewReviewRating(Number(e.target.value))}
+                                          className="w-full bg-[#12121d] border border-white/10 rounded-lg p-2 text-white text-xs"
+                                        >
+                                          <option value={5}>⭐⭐⭐⭐⭐ (5 Estrellas)</option>
+                                          <option value={4}>⭐⭐⭐⭐ (4 Estrellas)</option>
+                                          <option value={3}>⭐⭐⭐ (3 Estrellas)</option>
+                                        </select>
+                                      </div>
+                                      <div>
+                                        <label className="block text-[9.5px] text-gray-400 uppercase font-bold mb-1">Tiempo de la reseña</label>
+                                        <input
+                                          type="text"
+                                          value={newReviewTime}
+                                          onChange={(e) => setNewReviewTime(e.target.value)}
+                                          placeholder="Ej: Hace 3 días"
+                                          className="w-full bg-[#12121d] border border-white/10 rounded-lg p-2 text-white text-xs"
+                                        />
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <label className="block text-[9.5px] text-gray-400 uppercase font-bold mb-1">Texto de la Reseña *</label>
+                                      <textarea
+                                        rows={2}
+                                        value={newReviewText}
+                                        onChange={(e) => setNewReviewText(e.target.value)}
+                                        placeholder="Copia y pega aquí el comentario real del cliente..."
+                                        className="w-full bg-[#12121d] border border-white/10 rounded-lg p-2 text-white text-xs"
+                                      />
+                                    </div>
+                                    <div className="flex justify-end gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => setShowAddReviewForm(false)}
+                                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-400 rounded-lg text-xs"
+                                      >
+                                        Cancelar
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (!newReviewAuthor.trim() || !newReviewText.trim()) {
+                                            showToast("Ingresa el nombre del cliente y el texto");
+                                            return;
+                                          }
+                                          const newRev = {
+                                            id: `rev-${Date.now()}`,
+                                            author_name: newReviewAuthor.trim(),
+                                            rating: newReviewRating,
+                                            relative_time_description: newReviewTime.trim() || "Hace poco",
+                                            text: newReviewText.trim(),
+                                            author_photo: `https://images.unsplash.com/photo-${1535713875002 + Math.floor(Math.random() * 1000)}?auto=format&fit=crop&q=80&w=120`
+                                          };
+                                          const currentList = settingsDraft.googleMapsReviews || [];
+                                          setSettingsDraft({
+                                            ...settingsDraft,
+                                            googleMapsReviews: [newRev, ...currentList]
+                                          });
+                                          setNewReviewAuthor("");
+                                          setNewReviewText("");
+                                          setShowAddReviewForm(false);
+                                          showToast(`Reseña de "${newRev.author_name}" agregada`);
+                                        }}
+                                        className="px-3.5 py-1.5 bg-[#ffd025] text-black font-bold rounded-lg text-xs hover:bg-[#e6b800]"
+                                      >
+                                        Guardar en la Lista
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Lista de Tarjetas */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                                  {(settingsDraft.googleMapsReviews || []).map((rev, rIdx) => (
+                                    <div
+                                      key={rev.id || rIdx}
+                                      className="bg-[#181826] border border-white/5 rounded-xl p-3 flex flex-col justify-between hover:border-white/15 transition-all text-xs"
+                                    >
+                                      <div>
+                                        <div className="flex items-center justify-between mb-1.5">
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="font-bold text-white truncate max-w-[130px]">{rev.author_name}</span>
+                                            <span className="text-[10px] text-gray-500">· {rev.relative_time_description}</span>
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            <span className="text-amber-400 font-bold text-[11px]">{"★".repeat(rev.rating)}</span>
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                const updated = (settingsDraft.googleMapsReviews || []).filter((_, i) => i !== rIdx);
+                                                setSettingsDraft({ ...settingsDraft, googleMapsReviews: updated });
+                                                showToast("Reseña eliminada");
+                                              }}
+                                              className="text-red-400 hover:text-red-300 p-1 ml-1"
+                                              title="Eliminar reseña"
+                                            >
+                                              <Trash2 size={12} />
+                                            </button>
+                                          </div>
+                                        </div>
+                                        <p className="text-gray-300 text-[11px] italic line-clamp-3 leading-snug">
+                                          "{rev.text}"
+                                        </p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
                             </div>
                           </div>
 
