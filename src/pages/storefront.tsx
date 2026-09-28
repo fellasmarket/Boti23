@@ -2881,7 +2881,7 @@ export default function Storefront() {
                   </span>
                 </div>
 
-                {/* Banner exclusivo de sección */}
+                {/* Banner exclusivo de sección (Solo imagen pura sin textos ni gradientes encima) */}
                 <div className="relative w-full h-24 sm:h-40 md:h-60 lg:h-72 xl:h-80 overflow-hidden rounded-none border border-white/10 mb-4 bg-black select-none shadow-xl">
                   <img
                     src={
@@ -2900,22 +2900,8 @@ export default function Storefront() {
                     }
                     loading="lazy"
                     decoding="async"
-                    className="w-full h-full object-cover rounded-none brightness-90"
+                    className="w-full h-full object-cover rounded-none"
                   />
-                  {(dedicatedViewMode === "oportunidades" || dedicatedViewMode === "packs") && (
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent flex flex-col justify-end p-3 sm:p-6">
-                      <h2 className="text-base sm:text-2xl md:text-3xl font-black uppercase text-[#ffd025] tracking-wider drop-shadow">
-                        {dedicatedViewMode === "oportunidades"
-                          ? (settings.opportunitiesBannerTitle || "⏰ OPORTUNIDADES & OFERTAS FLASH")
-                          : (settings.packsBannerTitle || "🎁 PACKS & PROMOCIONES")}
-                      </h2>
-                      <p className="text-[10.5px] sm:text-xs text-gray-200 line-clamp-2 mt-0.5 max-w-2xl font-medium">
-                        {dedicatedViewMode === "oportunidades"
-                          ? (settings.opportunitiesBannerSubtitle || "Aprovecha descuentos por tiempo limitado y promociones directas de nuestra selección exclusiva")
-                          : (settings.packsBannerSubtitle || "Arma tu previa con los mejores combos y packs de licores y cervezas seleccionados por el equipo")}
-                      </p>
-                    </div>
-                  )}
                 </div>
 
                 {/* Menú de Pasillos en Texto Suelto (Sin Cajas ni Rectángulos, Solo Color al Seleccionar) */}
@@ -3029,56 +3015,98 @@ export default function Storefront() {
                   return (
                     <div className="space-y-6 mb-12">
                       {/* BARRA DE FILTROS & ORDENAMIENTO EN PESTAÑA DEDICADA */}
-                      <div className="bg-[#141420]/90 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-xl">
+                      <div className="bg-[#141420]/90 backdrop-blur-md p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-white/10 flex items-center justify-between gap-2 sm:gap-3 shadow-xl">
                         {/* Buscador de filtro en tiempo real */}
-                        <div className="flex-1 min-w-[180px] relative">
-                          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <div className="flex-1 min-w-0 relative">
+                          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                           <input
                             type="text"
                             value={dedicatedSearchQuery}
                             onChange={(e) => setDedicatedSearchQuery(e.target.value)}
-                            placeholder="Buscar en esta sección..."
-                            className="w-full bg-[#1c1c2a] border border-white/10 rounded-xl pl-9 pr-8 py-2 text-white text-xs focus:border-[#ffd025] focus:outline-none placeholder-gray-500"
+                            placeholder="Buscar productos..."
+                            className="w-full bg-[#1c1c2a] border border-white/10 rounded-lg sm:rounded-xl pl-8 sm:pl-9 pr-7 sm:pr-8 py-1.5 sm:py-2 text-white text-xs focus:border-[#ffd025] focus:outline-none placeholder-gray-500"
                           />
                           {dedicatedSearchQuery && (
                             <button
                               onClick={() => setDedicatedSearchQuery("")}
-                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1"
+                              aria-label="Limpiar búsqueda"
                             >
-                              <X size={14} />
+                              <X size={13} />
                             </button>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-2 overflow-x-auto shrink-0 scrollbar-none">
+                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                           {/* Filtro por Subcategoría / Etiqueta */}
                           {availableSubcats.length > 0 && (
-                            <select
-                              value={dedicatedSubcatFilter}
-                              onChange={(e) => setDedicatedSubcatFilter(e.target.value)}
-                              className="bg-[#1c1c2a] border border-white/10 rounded-xl px-3 py-2 text-white text-xs font-semibold focus:border-[#ffd025] focus:outline-none cursor-pointer"
-                            >
-                              <option value="all">Todas las subcategorías</option>
-                              {availableSubcats.map((sub) => (
-                                <option key={sub} value={sub}>{sub}</option>
-                              ))}
-                            </select>
+                            <div className="relative">
+                              {/* Versión Celular: Solo icono compacto con select nativo invisible superpuesto */}
+                              <div className="sm:hidden relative flex items-center justify-center w-8 h-8 rounded-lg bg-[#1c1c2a] border border-white/15 text-[#ffd025] hover:bg-[#252538] transition-colors" title="Filtrar por subcategoría">
+                                <Layers size={15} />
+                                <select
+                                  value={dedicatedSubcatFilter}
+                                  onChange={(e) => setDedicatedSubcatFilter(e.target.value)}
+                                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-base bg-black"
+                                  aria-label="Filtrar por subcategoría"
+                                >
+                                  <option value="all">Todas las subcategorías</option>
+                                  {availableSubcats.map((sub) => (
+                                    <option key={sub} value={sub}>{sub}</option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* Versión PC: Select completo con texto */}
+                              <div className="hidden sm:block">
+                                <select
+                                  value={dedicatedSubcatFilter}
+                                  onChange={(e) => setDedicatedSubcatFilter(e.target.value)}
+                                  className="bg-[#1c1c2a] border border-white/10 rounded-xl px-3 py-2 text-white text-xs font-semibold focus:border-[#ffd025] focus:outline-none cursor-pointer"
+                                >
+                                  <option value="all">Todas las subcategorías</option>
+                                  {availableSubcats.map((sub) => (
+                                    <option key={sub} value={sub}>{sub}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
                           )}
 
                           {/* Menú de Ordenamiento */}
-                          <div className="flex items-center gap-1.5 bg-[#1c1c2a] border border-white/10 rounded-xl px-2.5 py-1.5 shrink-0">
-                            <Filter size={13} className="text-[#ffd025]" />
-                            <select
-                              value={dedicatedSortBy}
-                              onChange={(e) => setDedicatedSortBy(e.target.value as any)}
-                              className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer"
-                            >
-                              <option value="default" className="bg-[#1a1a26] text-white">Ordenar: Destacados</option>
-                              <option value="price_asc" className="bg-[#1a1a26] text-white">Precio: Menor a Mayor ⬇️</option>
-                              <option value="price_desc" className="bg-[#1a1a26] text-white">Precio: Mayor a Menor ⬆️</option>
-                              <option value="name_asc" className="bg-[#1a1a26] text-white">Nombre: A ➔ Z</option>
-                              <option value="name_desc" className="bg-[#1a1a26] text-white">Nombre: Z ➔ A</option>
-                            </select>
+                          <div className="relative">
+                            {/* Versión Celular: Solo icono compacto con select nativo invisible superpuesto */}
+                            <div className="sm:hidden relative flex items-center justify-center w-8 h-8 rounded-lg bg-[#1c1c2a] border border-white/15 text-[#ffd025] hover:bg-[#252538] transition-colors" title="Ordenar productos">
+                              <Filter size={15} />
+                              <select
+                                value={dedicatedSortBy}
+                                onChange={(e) => setDedicatedSortBy(e.target.value as any)}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-base bg-black"
+                                aria-label="Ordenar productos"
+                              >
+                                <option value="default">Ordenar: Destacados</option>
+                                <option value="price_asc">Precio: Menor a Mayor ⬇️</option>
+                                <option value="price_desc">Precio: Mayor a Menor ⬆️</option>
+                                <option value="name_asc">Nombre: A ➔ Z</option>
+                                <option value="name_desc">Nombre: Z ➔ A</option>
+                              </select>
+                            </div>
+
+                            {/* Versión PC: Selector con texto e icono */}
+                            <div className="hidden sm:flex items-center gap-1.5 bg-[#1c1c2a] border border-white/10 rounded-xl px-2.5 py-1.5 shrink-0">
+                              <Filter size={13} className="text-[#ffd025]" />
+                              <select
+                                value={dedicatedSortBy}
+                                onChange={(e) => setDedicatedSortBy(e.target.value as any)}
+                                className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer"
+                              >
+                                <option value="default" className="bg-[#1a1a26] text-white">Ordenar: Destacados</option>
+                                <option value="price_asc" className="bg-[#1a1a26] text-white">Precio: Menor a Mayor ⬇️</option>
+                                <option value="price_desc" className="bg-[#1a1a26] text-white">Precio: Mayor a Menor ⬆️</option>
+                                <option value="name_asc" className="bg-[#1a1a26] text-white">Nombre: A ➔ Z</option>
+                                <option value="name_desc" className="bg-[#1a1a26] text-white">Nombre: Z ➔ A</option>
+                              </select>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -3220,20 +3248,6 @@ export default function Storefront() {
                               alt="Banner"
                               className="w-full h-full object-cover"
                             />
-                          )}
-                          {selectedAisleObj && (slide.title || slide.description) && (
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4 sm:p-6">
-                              {slide.title && (
-                                <h3 className="text-white text-sm sm:text-lg md:text-xl font-black uppercase tracking-wider drop-shadow">
-                                  {slide.title}
-                                </h3>
-                              )}
-                              {slide.description && (
-                                <p className="text-[#ffd025] text-xs sm:text-sm font-bold mt-0.5 drop-shadow">
-                                  {slide.description}
-                                </p>
-                              )}
-                            </div>
                           )}
                         </div>
                       ))}
