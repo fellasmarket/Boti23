@@ -38,23 +38,55 @@
     "openTime": "00:00",
     "closeTime": "23:59",
     "deliveryMinimum": 5000,
-    "contingencyMode": false,
+    "contingencyMode": true,
     "contingencyMessage": "🚨 MODO CONTINGENCIA: Por alta demanda o motivos de fuerza mayor, la recepción de pedidos web se encuentra pausada temporalmente. Por favor consulta por WhatsApp.",
+    "contingencyBannerImage": "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=1600&auto=format&fit=crop&q=80",
+    "contingencyAislesConfig": {},
+    "promoBannerImage": "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=1600&auto=format&fit=crop&q=80",
+    "aislesBannerImage": "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=1600&auto=format&fit=crop&q=80",
+    "homeCollectionProductIds": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "recommendedProductIds": [
+      1,
+      2,
+      3,
+      4
+    ],
     "opportunitiesBannerImage": "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=1600&auto=format&fit=crop&q=80",
     "opportunitiesBannerTitle": "⏰ OPORTUNIDADES & OFERTAS FLASH",
     "opportunitiesBannerSubtitle": "Aprovecha descuentos por tiempo limitado y promociones directas",
-    "opportunitiesProductIds": [1, 2, 3, 4, 7, 8],
+    "opportunitiesProductIds": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8
+    ],
     "packsBannerImage": "https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=1600&auto=format&fit=crop&q=80",
     "packsBannerTitle": "🎁 PACKS & PROMOCIONES",
     "packsBannerSubtitle": "Arma tu previa con los mejores combos y packs de licores y cervezas",
-    "packsProductIds": [2, 5, 6, 9, 10, 11],
+    "packsProductIds": [
+      2,
+      5,
+      6,
+      9,
+      10,
+      11
+    ],
     "footerLogo": "",
     "footerDescription": "Tu botillería y minimarket de confianza con despacho rápido a domicilio.",
     "socialInstagram": "https://instagram.com",
     "socialFacebook": "",
     "socialTiktok": "",
     "socialWhatsapp": "",
-    "googleMapsPlaceId": "",
+    "googleMapsPlaceId": "ChIJsQKhaXwlGJYRw_eFoWzOXyA",
     "googleMapsRating": 4.9,
     "googleMapsReviewsCount": 142,
     "googleMapsReviews": [
@@ -673,6 +705,16 @@
       "path": "/",
       "userAgent": "Mozilla/5.0 (Windows)",
       "createdAt": "2026-09-25T07:22:08.648Z"
+    },
+    {
+      "ipAddress": "190.163.142.251",
+      "city": "Concepción",
+      "region": "Biobio",
+      "country": "Chile",
+      "path": "/",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+      "id": 4,
+      "createdAt": "2026-09-28T02:21:42.049Z"
     }
   ]
 }
