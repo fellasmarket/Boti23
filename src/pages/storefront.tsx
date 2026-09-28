@@ -985,17 +985,14 @@ export default function Storefront() {
       }
     });
 
-    if (settings.contingencyMode) {
-      return list.filter((item) => {
-        const count = baseProducts.filter((p) =>
-          item.type === "category" ? p.category === item.name : p.aisle === item.name
-        ).length;
-        return count > 0;
-      });
-    }
-
-    return list;
-  }, [categories, allStoreAisles, settings.contingencyMode, baseProducts]);
+    // Always filter out empty categories or aisles to avoid rendering dead/empty menu links
+    return list.filter((item) => {
+      const count = baseProducts.filter((p) =>
+        item.type === "category" ? p.category === item.name : p.aisle === item.name
+      ).length;
+      return count > 0;
+    });
+  }, [categories, allStoreAisles, baseProducts]);
 
   const filteredProducts = useMemo(() => {
     if (debouncedSearch && debouncedSearch.trim().length > 0) {
@@ -2228,12 +2225,12 @@ export default function Storefront() {
           {/* BARRA SUPERIOR (1/6): Degradado naranja-coral ultra delgado con tipografía equilibrada */}
           <div
             onClick={() => setShowComunasModal(true)}
-            className="w-full text-white py-[2.5px] px-2 sm:px-4 text-center cursor-pointer select-none transition-opacity hover:opacity-95 overflow-hidden flex items-center justify-center leading-none"
+            className="w-full text-white py-1.5 px-2 sm:px-4 text-center cursor-pointer select-none transition-opacity hover:opacity-95 flex items-center justify-center min-h-[24px] sm:min-h-[28px]"
             style={{
               background: "linear-gradient(90deg, #f7a627 0%, #fa7a34 50%, #f44369 100%)",
             }}
           >
-            <span className="font-bold uppercase whitespace-nowrap tracking-wide text-[8.5px] min-[360px]:text-[9.5px] min-[410px]:text-[10px] sm:text-[11px] leading-tight text-white">
+            <span className="font-bold uppercase tracking-wider text-[7.5px] min-[360px]:text-[8.5px] min-[410px]:text-[9.5px] sm:text-[11px] leading-tight text-white text-center break-words text-balance max-w-full">
               {settings.topAnnouncementText?.trim() || "PIDE ANTES DE LAS 8:00 AM Y RECIBE EL MISMO DÍA (VER COMUNAS)"}
             </span>
           </div>
@@ -2945,7 +2942,6 @@ export default function Storefront() {
                   </button>
                   {(aisles.length > 0 ? aisles : categories)
                     .filter((item) => {
-                      if (!settings.contingencyMode) return true;
                       const isAisle = aisles.includes(item);
                       const count = baseProducts.filter((p) =>
                         isAisle ? p.aisle === item : p.category === item
@@ -3326,7 +3322,7 @@ export default function Storefront() {
               {(() => {
                 const isFiltered = Boolean(activeAisle || activeCategory || navQuickFilter);
 
-                const recommendedSection = (
+                const recommendedSection = promoProducts.length === 0 ? null : (
                   <section className="w-full mb-6 sm:mb-8">
                     <div className="w-full px-3 sm:px-6 md:px-8 mb-3 sm:mb-4 flex items-center gap-3 sm:gap-4">
                       <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/20 to-white/20" />
@@ -3437,7 +3433,18 @@ export default function Storefront() {
                   </section>
                 );
 
-                const collectionsSection = (
+                const hasProductsOnDesktop = activeAisles.some((aisleName) => {
+                  const rawAisleProducts = groupedByAisle[aisleName] || [];
+                  const aisleProducts = settings.contingencyMode ? rawAisleProducts.slice(0, 6) : rawAisleProducts.slice(0, 10);
+                  return aisleProducts.length > 0;
+                });
+                const hasProductsOnMobile = homeCollectionProducts.length > 0;
+
+                const showCollections = isFiltered
+                  ? (hasProductsOnDesktop || hasProductsOnMobile)
+                  : homeCollectionProducts.length > 0;
+
+                const collectionsSection = !showCollections ? null : (
                   <section className="w-full mb-6 sm:mb-8">
                     <div className="w-full px-3 sm:px-6 md:px-8 mb-3 sm:mb-4 flex items-center gap-3 sm:gap-4">
                       <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/20 to-white/20" />
@@ -3844,7 +3851,16 @@ export default function Storefront() {
                     >
                       Todos
                     </button>
-                    {(aisles.length > 0 ? aisles : categories).slice(0, 6).map((item) => {
+                    {(aisles.length > 0 ? aisles : categories)
+                      .filter((item) => {
+                        const isAisle = aisles.includes(item);
+                        const count = baseProducts.filter((p) =>
+                          isAisle ? p.aisle === item : p.category === item
+                        ).length;
+                        return count > 0;
+                      })
+                      .slice(0, 6)
+                      .map((item) => {
                       const isAisleSelected = activeAisle === item;
                       const isCategorySelected = activeCategory === item;
                       const isSelected = isAisleSelected || isCategorySelected;
