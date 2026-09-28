@@ -8,7 +8,7 @@ import Storefront from "@/pages/storefront";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000,
+      staleTime: 0,
       gcTime: 5 * 60_000,
       refetchOnWindowFocus: false,
       retry: 1,

@@ -956,17 +956,6 @@ export default function Storefront() {
     return [...combined, ...samplePromos].slice(0, 4);
   }, [products, settings.recommendedProductIds]);
 
-  const allMenuSections = useMemo(() => {
-    const list: Array<{ name: string; type: "category" | "aisle" }> = [];
-    categories.forEach((c) => list.push({ name: c, type: "category" }));
-    allStoreAisles.forEach((a) => {
-      if (!list.some((item) => item.name.toLowerCase() === a.toLowerCase())) {
-        list.push({ name: a, type: "aisle" });
-      }
-    });
-    return list;
-  }, [categories, allStoreAisles]);
-
   const baseProducts = useMemo(() => {
     if (!settings.contingencyMode) return products;
     const contingencyAisles = settings.contingencyAislesConfig || {};
@@ -981,6 +970,27 @@ export default function Storefront() {
     if (filtered.length > 0) return filtered;
     return products.filter((p) => !p.hidden);
   }, [products, settings.contingencyMode, settings.contingencyAislesConfig]);
+
+  const allMenuSections = useMemo(() => {
+    const list: Array<{ name: string; type: "category" | "aisle" }> = [];
+    categories.forEach((c) => list.push({ name: c, type: "category" }));
+    allStoreAisles.forEach((a) => {
+      if (!list.some((item) => item.name.toLowerCase() === a.toLowerCase())) {
+        list.push({ name: a, type: "aisle" });
+      }
+    });
+
+    if (settings.contingencyMode) {
+      return list.filter((item) => {
+        const count = baseProducts.filter((p) =>
+          item.type === "category" ? p.category === item.name : p.aisle === item.name
+        ).length;
+        return count > 0;
+      });
+    }
+
+    return list;
+  }, [categories, allStoreAisles, settings.contingencyMode, baseProducts]);
 
   const filteredProducts = useMemo(() => {
     if (debouncedSearch && debouncedSearch.trim().length > 0) {
@@ -1146,19 +1156,20 @@ export default function Storefront() {
     const now = new Date();
     const localMinutes = now.getHours() * 60 + now.getMinutes();
 
-    // Obtener minutos actuales en zona horaria de Chile (America/Santiago)
+    // Obtener minutos actuales en zona horaria de Chile (America/Santiago) de forma robusta
     let chileMinutes = localMinutes;
     try {
-      const parts = new Intl.DateTimeFormat("en-US", {
+      const formatted = new Intl.DateTimeFormat("es-CL", {
         timeZone: "America/Santiago",
-        hour: "numeric",
-        minute: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
         hour12: false,
-      }).formatToParts(now);
-      const h = Number(parts.find((p) => p.type === "hour")?.value);
-      const m = Number(parts.find((p) => p.type === "minute")?.value);
+      }).format(now);
+      const parts = formatted.split(":");
+      const h = parseInt(parts[0], 10) % 24;
+      const m = parseInt(parts[1], 10);
       if (!isNaN(h) && !isNaN(m)) {
-        chileMinutes = (h === 24 ? 0 : h) * 60 + m;
+        chileMinutes = h * 60 + m;
       }
     } catch {
       chileMinutes = localMinutes;
@@ -1599,10 +1610,12 @@ export default function Storefront() {
     createCategoryMut.mutate(
       { data: { name } },
       {
-        onSuccess: (newCat) =>
+        onSuccess: (newCat) => {
           queryClient.setQueryData(getGetMenuQueryKey(), (old: any) =>
             old ? { ...old, categories: [...old.categories, newCat] } : old,
-          ),
+          );
+          refreshMenu();
+        },
         onError: refreshMenu,
       },
     );
@@ -1615,10 +1628,12 @@ export default function Storefront() {
     createAisleMut.mutate(
       { data: { name } },
       {
-        onSuccess: (newAisle) =>
+        onSuccess: (newAisle) => {
           queryClient.setQueryData(getGetMenuQueryKey(), (old: any) =>
             old ? { ...old, aisles: [...old.aisles, newAisle] } : old,
-          ),
+          );
+          refreshMenu();
+        },
         onError: refreshMenu,
       },
     );
@@ -1631,10 +1646,12 @@ export default function Storefront() {
     createSubcategoryMut.mutate(
       { data: { name } },
       {
-        onSuccess: (newSub) =>
+        onSuccess: (newSub) => {
           queryClient.setQueryData(getGetMenuQueryKey(), (old: any) =>
             old ? { ...old, subcategories: [...old.subcategories, newSub] } : old,
-          ),
+          );
+          refreshMenu();
+        },
         onError: refreshMenu,
       },
     );
@@ -1652,7 +1669,7 @@ export default function Storefront() {
     );
     reorderCategoriesMut.mutate(
       { data: { ids: newOrder.map((c) => c.id) } },
-      { onError: refreshMenu },
+      { onSuccess: () => refreshMenu(), onError: refreshMenu },
     );
   };
 
@@ -1666,7 +1683,7 @@ export default function Storefront() {
     );
     reorderAislesMut.mutate(
       { data: { ids: newOrder.map((a) => a.id) } },
-      { onError: refreshMenu },
+      { onSuccess: () => refreshMenu(), onError: refreshMenu },
     );
   };
 
@@ -1680,7 +1697,7 @@ export default function Storefront() {
     );
     reorderSubcategoriesMut.mutate(
       { data: { ids: newOrder.map((s) => s.id) } },
-      { onError: refreshMenu },
+      { onSuccess: () => refreshMenu(), onError: refreshMenu },
     );
   };
 
@@ -1849,17 +1866,19 @@ export default function Storefront() {
       );
       showToast("Producto actualizado");
       cancelEditing();
-      updateProductMut.mutate({ id, data: productData }, { onError: refreshMenu });
+      updateProductMut.mutate({ id, data: productData }, { onSuccess: () => refreshMenu(), onError: refreshMenu });
     } else {
       showToast("Producto creado");
       cancelEditing();
       createProductMut.mutate(
         { data: productData },
         {
-          onSuccess: (newProduct) =>
+          onSuccess: (newProduct) => {
             queryClient.setQueryData(getGetMenuQueryKey(), (old: any) =>
               old ? { ...old, products: [...old.products, newProduct] } : old,
-            ),
+            );
+            refreshMenu();
+          },
           onError: refreshMenu,
         },
       );
@@ -1892,26 +1911,26 @@ export default function Storefront() {
         refreshMenu();
       },
     });
-    deleteProductMut.mutate({ id }, { onError: refreshMenu });
+    deleteProductMut.mutate({ id }, { onSuccess: () => refreshMenu(), onError: refreshMenu });
   };
 
   const deleteCategoryHandler = (id: number) => {
     queryClient.setQueryData(getGetMenuQueryKey(), (old: any) =>
       old ? { ...old, categories: old.categories.filter((c: any) => c.id !== id) } : old,
     );
-    deleteCategoryMut.mutate({ id }, { onError: refreshMenu });
+    deleteCategoryMut.mutate({ id }, { onSuccess: () => refreshMenu(), onError: refreshMenu });
   };
   const deleteAisleHandler = (id: number) => {
     queryClient.setQueryData(getGetMenuQueryKey(), (old: any) =>
       old ? { ...old, aisles: old.aisles.filter((a: any) => a.id !== id) } : old,
     );
-    deleteAisleMut.mutate({ id }, { onError: refreshMenu });
+    deleteAisleMut.mutate({ id }, { onSuccess: () => refreshMenu(), onError: refreshMenu });
   };
   const deleteSubcategoryHandler = (id: number) => {
     queryClient.setQueryData(getGetMenuQueryKey(), (old: any) =>
       old ? { ...old, subcategories: old.subcategories.filter((s: any) => s.id !== id) } : old,
     );
-    deleteSubcategoryMut.mutate({ id }, { onError: refreshMenu });
+    deleteSubcategoryMut.mutate({ id }, { onSuccess: () => refreshMenu(), onError: refreshMenu });
   };
 
   const saveSettings = () => {
@@ -1921,7 +1940,7 @@ export default function Storefront() {
     showToast("Ajustes guardados");
     updateSettingsMut.mutate(
       { data: settingsDraft },
-      { onError: refreshMenu },
+      { onSuccess: () => refreshMenu(), onError: refreshMenu },
     );
   };
 
@@ -2919,30 +2938,39 @@ export default function Storefront() {
                   >
                     Todos
                   </button>
-                  {(aisles.length > 0 ? aisles : categories).map((item) => {
-                    const isSel = activeAisle === item || activeCategory === item;
-                    return (
-                      <button
-                        key={item}
-                        onClick={() => {
-                          if (aisles.includes(item)) {
-                            setActiveCategory("");
-                            setActiveAisle(item);
-                          } else {
-                            setActiveAisle("");
-                            setActiveCategory(item);
-                          }
-                        }}
-                        className={`text-xs sm:text-sm uppercase tracking-wider whitespace-nowrap transition-colors bg-transparent border-0 p-0 cursor-pointer ${
-                          isSel
-                            ? "text-[#ffd025] font-black"
-                            : "text-gray-400 hover:text-white font-medium"
-                        }`}
-                      >
-                        {item}
-                      </button>
-                    );
-                  })}
+                  {(aisles.length > 0 ? aisles : categories)
+                    .filter((item) => {
+                      if (!settings.contingencyMode) return true;
+                      const isAisle = aisles.includes(item);
+                      const count = baseProducts.filter((p) =>
+                        isAisle ? p.aisle === item : p.category === item
+                      ).length;
+                      return count > 0;
+                    })
+                    .map((item) => {
+                      const isSel = activeAisle === item || activeCategory === item;
+                      return (
+                        <button
+                          key={item}
+                          onClick={() => {
+                            if (aisles.includes(item)) {
+                              setActiveCategory("");
+                              setActiveAisle(item);
+                            } else {
+                              setActiveAisle("");
+                              setActiveCategory(item);
+                            }
+                          }}
+                          className={`text-xs sm:text-sm uppercase tracking-wider whitespace-nowrap transition-colors bg-transparent border-0 p-0 cursor-pointer ${
+                            isSel
+                              ? "text-[#ffd025] font-black"
+                              : "text-gray-400 hover:text-white font-medium"
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      );
+                    })}
                 </div>
 
                 {/* Vista Dedicada de Productos segun Modo */}
