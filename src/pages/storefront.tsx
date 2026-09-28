@@ -2714,16 +2714,16 @@ export default function Storefront() {
             </div>
           )}
 
-          {/* 3ra DIVISIÓN DEL ENCABEZADO: Aviso de Horario de Atención */}
+          {/* 3ra DIVISIÓN DEL ENCABEZADO: Aviso de Horario de Atención (ESTRICTAMENTE 1 LÍNEA) */}
           {!isStoreOpen && (
-            <div className="w-full bg-[#1a0f00] border-t border-b border-amber-600/30 px-4 py-2 shadow-md">
-              <div className="w-full max-w-[1500px] mx-auto px-3 sm:px-6 md:px-8 flex items-center justify-center gap-2.5">
-                <span className="text-amber-400 text-sm leading-none flex-shrink-0 animate-pulse">🕐</span>
-                <p className="text-[11px] xs:text-xs sm:text-[13px] text-amber-300 font-bold leading-normal m-0 text-center">
+            <div className="w-full bg-[#1a0f00] border-t border-b border-amber-600/30 py-1 sm:py-1.5 px-2 sm:px-4 shadow-md overflow-hidden select-none">
+              <div className="w-full max-w-[1500px] mx-auto flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap overflow-hidden">
+                <span className="text-amber-400 text-[10px] sm:text-xs leading-none shrink-0 animate-pulse">🕐</span>
+                <p className="text-[7.5px] min-[330px]:text-[8.5px] min-[380px]:text-[9.5px] min-[420px]:text-[10px] sm:text-[11.5px] md:text-xs text-amber-300 font-bold leading-tight m-0 text-center whitespace-nowrap truncate">
                   <span>Estamos fuera de nuestro horario de atención. </span>
-                  <span className="text-gray-400 font-normal hidden xs:inline">Puedes revisar el catálogo y armar tu carrito (recepción de pedidos desde las </span>
+                  <span className="text-gray-300 font-normal">Revisa el catálogo y arma tu carrito (pedidos desde las </span>
                   <span className="text-[#ffd025] font-black">{settings.openTime ?? "11:00"}</span>
-                  <span className="text-gray-400 font-normal hidden xs:inline">)</span>
+                  <span className="text-gray-300 font-normal">)</span>
                 </p>
               </div>
             </div>
@@ -3142,7 +3142,7 @@ export default function Storefront() {
                 if (bannerToShow.length === 0) return null;
 
                 return (
-                  <div className="w-full px-3 sm:px-6 md:px-8 mt-3 sm:mt-6">
+                  <div className="w-full px-3 sm:px-6 md:px-8 mt-3 sm:mt-5 mb-6 sm:mb-8">
                     <div
                       className="relative w-full h-36 sm:h-48 md:h-64 lg:h-[280px] xl:h-[320px] shadow-lg border border-white/10 bg-black select-none rounded-xl sm:rounded-2xl overflow-hidden"
                       style={{ transform: "translateZ(0)", WebkitMaskImage: "-webkit-radial-gradient(white, black)" }}
@@ -3204,8 +3204,8 @@ export default function Storefront() {
                 const isFiltered = Boolean(activeAisle || activeCategory || navQuickFilter);
 
                 const recommendedSection = (
-                  <>
-                    <div className={`w-full px-3 sm:px-6 md:px-8 ${isFiltered ? "mt-4 sm:mt-6 mb-2 sm:mb-2.5" : "mt-2 sm:mt-3 mb-1.5 sm:mb-2"} flex items-center gap-3 sm:gap-4`}>
+                  <section className="w-full mb-6 sm:mb-8">
+                    <div className="w-full px-3 sm:px-6 md:px-8 mb-3 sm:mb-4 flex items-center gap-3 sm:gap-4">
                       <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/20 to-white/20" />
                       <span className="text-[10px] sm:text-xs md:text-sm font-black tracking-widest text-[#ffd025] uppercase shrink-0 px-1 select-none whitespace-nowrap drop-shadow">
                         #NUESTROSRECOMENDADOS
@@ -3213,7 +3213,7 @@ export default function Storefront() {
                       <div className="flex-1 h-px bg-gradient-to-l from-transparent via-white/20 to-white/20" />
                     </div>
 
-                    <section className={`w-full px-3 sm:px-6 md:px-8 ${isFiltered ? "mt-2 sm:mt-4" : "mt-1.5 sm:mt-3"}`}>
+                    <div className="w-full px-3 sm:px-6 md:px-8">
                       <div className="w-full h-16 sm:h-28 md:h-48 lg:h-60 xl:h-72 overflow-hidden rounded-none border border-white/10 mb-3 sm:mb-4 bg-black select-none">
                         <img
                           src={settings.promoBannerImage || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=1600&auto=format&fit=crop&q=80"}
@@ -3297,13 +3297,13 @@ export default function Storefront() {
                           </div>
                         ))}
                       </div>
-                    </section>
-                  </>
+                    </div>
+                  </section>
                 );
 
                 const collectionsSection = (
-                  <>
-                    <div className={`w-full px-3 sm:px-6 md:px-8 ${isFiltered ? "mt-4 sm:mt-6 mb-2 sm:mb-2.5" : "mt-5 sm:mt-7 mb-2 sm:mb-2.5"} flex items-center gap-3 sm:gap-4`}>
+                  <section className="w-full mb-6 sm:mb-8">
+                    <div className="w-full px-3 sm:px-6 md:px-8 mb-3 sm:mb-4 flex items-center gap-3 sm:gap-4">
                       <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/20 to-white/20" />
                       <span className="text-[10px] sm:text-xs md:text-sm font-black tracking-widest text-[#ffd025] uppercase shrink-0 px-1 select-none whitespace-nowrap drop-shadow">
                         #NUESTRASCOLECCIONES
@@ -3311,7 +3311,7 @@ export default function Storefront() {
                       <div className="flex-1 h-px bg-gradient-to-l from-transparent via-white/20 to-white/20" />
                     </div>
 
-                    <section className={`w-full px-3 sm:px-6 md:px-8 ${isFiltered ? "mt-2 sm:mt-4" : "mt-1.5 sm:mt-3"}`}>
+                    <div className="w-full px-3 sm:px-6 md:px-8">
                       <div className="w-full h-16 sm:h-28 md:h-48 lg:h-60 xl:h-72 overflow-hidden rounded-none border border-white/10 mb-3 sm:mb-4 bg-black select-none">
                         <img
                           src={settings.aislesBannerImage || "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=1600&auto=format&fit=crop&q=80"}
@@ -3574,8 +3574,8 @@ export default function Storefront() {
                           })}
                         </div>
                       )}
-                    </section>
-                  </>
+                    </div>
+                  </section>
                 );
 
                 return isFiltered ? (
@@ -3596,7 +3596,7 @@ export default function Storefront() {
             </>
           )}
 
-          <footer className="mt-8 pt-6 pb-6 border-t border-white/10 bg-black/60 text-gray-400">
+          <footer className="mt-6 sm:mt-8 pt-6 pb-6 border-t border-white/10 bg-black/60 text-gray-400">
             <div className="w-full px-4 sm:px-8 md:px-10 lg:px-12">
               {/* Distribución exacta en 2 Columnas con línea divisoria central */}
               <div className="grid grid-cols-2 gap-3 sm:gap-8 items-start">

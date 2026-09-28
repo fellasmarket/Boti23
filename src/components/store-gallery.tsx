@@ -57,14 +57,14 @@ export function StoreGallery({
   });
 
   return (
-    <section className="w-full px-3 sm:px-6 md:px-8 mt-10 mb-8">
+    <section className="w-full px-3 sm:px-6 md:px-8 mb-6 sm:mb-8">
       {/* 
-        Línea divisoria antes de las imágenes con el texto #LASPROMOSDELTIOFELLAS
+        Línea divisoria simétrica antes de las imágenes con el texto #LASPROMOSDELTIOFELLAS
         situado justo al medio, con una línea a cada lado del texto.
       */}
-      <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5">
+      <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/20 to-white/20" />
-        <span className="text-xs sm:text-sm font-black tracking-widest text-[#ffd025] uppercase px-1 select-none whitespace-nowrap drop-shadow">
+        <span className="text-[10px] sm:text-xs md:text-sm font-black tracking-widest text-[#ffd025] uppercase shrink-0 px-1 select-none whitespace-nowrap drop-shadow">
           {tagText}
         </span>
         <div className="flex-1 h-px bg-gradient-to-l from-transparent via-white/20 to-white/20" />
