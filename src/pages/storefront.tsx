@@ -363,7 +363,12 @@ function useDragScroll() {
 
 export default function Storefront() {
   const queryClient = useQueryClient();
-  const { data: menu, isLoading } = useGetMenu();
+  const { data: menu, isLoading } = useGetMenu({
+    query: {
+      queryKey: getGetMenuQueryKey(),
+      refetchInterval: 5000, // Poll every 5 seconds to automatically keep the storefront and admin in sync
+    },
+  });
   const { data: deliveryLocations = [] } = useListDeliveryLocations();
 
   const [ageVerified, setAgeVerified] = useState<boolean>(() => {
@@ -2161,11 +2166,11 @@ export default function Storefront() {
                   }`}
                 >
                   <span>Todos los productos</span>
-                  <span className="text-[10px] opacity-75">{products.length}</span>
+                  <span className="text-[10px] opacity-75">{baseProducts.length}</span>
                 </button>
                 {allMenuSections.map((sec) => {
                   const isActive = sec.type === "category" ? activeCategory === sec.name : activeAisle === sec.name;
-                  const count = products.filter((p) => (sec.type === "category" ? p.category === sec.name : p.aisle === sec.name)).length;
+                  const count = baseProducts.filter((p) => (sec.type === "category" ? p.category === sec.name : p.aisle === sec.name)).length;
                   return (
                     <button
                       key={sec.name}
@@ -3162,83 +3167,101 @@ export default function Storefront() {
                         <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
                           <p className="text-xs text-gray-400">No hay productos que coincidan con la búsqueda o filtros seleccionados.</p>
                         </div>
-                      ) : (
-                        <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full">
-                          {processed.map((product) => (
-                            <div
-                              key={product.id}
-                              className="group flex flex-col justify-between h-full w-full"
-                            >
-                              <div>
-                                <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1.5 sm:mb-2">
-                                  {product.image ? (
-                                    <img
-                                      src={product.image}
-                                      alt={product.name}
-                                      loading="lazy"
-                                      decoding="async"
-                                      className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300"
-                                      onError={(e) => {
-                                        (e.currentTarget as HTMLImageElement).src =
-                                          "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
-                                      }}
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-none">
-                                      <Package size={20} className="text-[#ffd025]/70" />
-                                      <span className="text-[8px] sm:text-[10px] mt-0.5 font-semibold uppercase">Fellas</span>
-                                    </div>
-                                  )}
+                      ) : (() => {
+                        const len = processed.length;
+                        const gridColsClass = len === 1
+                          ? "md:grid-cols-1 w-full"
+                          : len === 2
+                          ? "md:grid-cols-2"
+                          : len === 3
+                          ? "md:grid-cols-3"
+                          : len === 4
+                          ? "md:grid-cols-4"
+                          : len === 5
+                          ? "md:grid-cols-5"
+                          : len === 6
+                          ? "md:grid-cols-6"
+                          : len === 7
+                          ? "md:grid-cols-7"
+                          : "md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8";
+                        return (
+                          <div className={`grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full ${gridColsClass}`}>
+                            {processed.map((product) => (
+                              <div
+                                key={product.id}
+                                className="group flex flex-col justify-between h-full w-full"
+                              >
+                                <div>
+                                  <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1.5 sm:mb-2">
+                                    {product.image ? (
+                                      <img
+                                        src={product.image}
+                                        alt={product.name}
+                                        loading="lazy"
+                                        decoding="async"
+                                        className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300"
+                                        onError={(e) => {
+                                          (e.currentTarget as HTMLImageElement).src =
+                                            "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-none">
+                                        <Package size={20} className="text-[#ffd025]/70" />
+                                        <span className="text-[8px] sm:text-[10px] mt-0.5 font-semibold uppercase">Fellas</span>
+                                      </div>
+                                    )}
 
-                                  {(product.oferta || isOpp || isPacks) && (
-                                    <div className="absolute top-0 left-0 z-10">
-                                      <span className={`px-1.5 py-0.5 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow ${isOpp ? "bg-amber-500" : isPacks ? "bg-purple-600" : "bg-red-600"}`}>
-                                        {isOpp ? "OFERTA" : isPacks ? "PACK" : "PROMO"}
+                                    {(product.oferta || isOpp || isPacks) && (
+                                      <div className="absolute top-0 left-0 z-10">
+                                        <span className={`px-1.5 py-0.5 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow ${isOpp ? "bg-amber-500" : isPacks ? "bg-purple-600" : "bg-red-600"}`}>
+                                          {isOpp ? "OFERTA" : isPacks ? "PACK" : "PROMO"}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="h-3.5 sm:h-4 flex items-center mb-0.5 overflow-hidden">
+                                    {(product.subcategory || product.category || product.aisle) ? (
+                                      <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
+                                        {product.subcategory || product.category || product.aisle}
                                       </span>
-                                    </div>
-                                  )}
+                                    ) : (
+                                      <span className="text-[7.5px] sm:text-[9px] font-medium uppercase tracking-wider text-transparent select-none">
+                                        -
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <h4
+                                    title={product.name}
+                                    className="text-[9.5px] xs:text-[10px] sm:text-[11.5px] md:text-[12px] font-semibold text-white leading-tight line-clamp-2 h-7 sm:h-8 md:h-8.5 block w-full group-hover:text-[#ffd025] transition-colors"
+                                  >
+                                    {product.name}
+                                  </h4>
                                 </div>
 
-                                <div className="h-3.5 sm:h-4 flex items-center mb-0.5 overflow-hidden">
-                                  {(product.subcategory || product.category || product.aisle) ? (
-                                    <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
-                                      {product.subcategory || product.category || product.aisle}
-                                    </span>
-                                  ) : (
-                                    <span className="text-[7.5px] sm:text-[9px] font-medium uppercase tracking-wider text-transparent select-none">
-                                      -
-                                    </span>
-                                  )}
+                                <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1">
+                                  <span className="text-[11px] sm:text-xs md:text-sm font-black text-[#ffd025] truncate">
+                                    ${Number(product.price || 0).toLocaleString("es-CL")}
+                                  </span>
+
+                                  <button
+                                    onClick={() => handleAddToCartClick(product)}
+                                    disabled={!isStoreOpen}
+                                    className="h-6 px-1.5 sm:px-2.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 rounded-none hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                                    title="Añadir al carrito"
+                                    aria-label="Añadir al carrito"
+                                  >
+                                    <Plus size={12} strokeWidth={2.5} />
+                                    <span className="hidden sm:inline text-[10px]">Añadir</span>
+                                  </button>
                                 </div>
-
-                                <h4
-                                  title={product.name}
-                                  className="text-[9.5px] xs:text-[10px] sm:text-[11.5px] md:text-[12px] font-semibold text-white leading-tight line-clamp-2 h-7 sm:h-8 md:h-8.5 block w-full group-hover:text-[#ffd025] transition-colors"
-                                >
-                                  {product.name}
-                                </h4>
                               </div>
-
-                              <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1">
-                                <span className="text-[11px] sm:text-xs md:text-sm font-black text-[#ffd025] truncate">
-                                  ${Number(product.price || 0).toLocaleString("es-CL")}
-                                </span>
-
-                                <button
-                                  onClick={() => handleAddToCartClick(product)}
-                                  disabled={!isStoreOpen}
-                                  className="h-6 px-1.5 sm:px-2.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 rounded-none hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                                  title="Añadir al carrito"
-                                  aria-label="Añadir al carrito"
-                                >
-                                  <Plus size={12} strokeWidth={2.5} />
-                                  <span className="hidden sm:inline text-[10px]">Añadir</span>
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })()}
@@ -3324,79 +3347,92 @@ export default function Storefront() {
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4 gap-x-2.5 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 w-full items-stretch">
-                        {promoProducts.slice(0, 4).map((product) => (
-                          <div
-                            key={product.id}
-                            className="group flex flex-col justify-between h-full w-full"
-                          >
-                            <div>
-                              <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1.5 sm:mb-2">
-                                {product.image ? (
-                                  <img
-                                    src={product.image}
-                                    alt={product.name}
-                                    loading="lazy"
-                                    decoding="async"
-                                    className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300"
-                                    onError={(e) => {
-                                      (e.currentTarget as HTMLImageElement).src =
-                                        "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
-                                    }}
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-none">
-                                    <Package size={20} className="text-[#ffd025]/70" />
-                                    <span className="text-[8px] sm:text-[10px] mt-0.5 font-semibold uppercase">Fellas</span>
-                                  </div>
-                                )}
+                      {(() => {
+                        const activePromoProducts = promoProducts.slice(0, 4);
+                        const len = activePromoProducts.length;
+                        const gridColsClass = len === 1
+                          ? "md:grid-cols-1 w-full"
+                          : len === 2
+                          ? "md:grid-cols-2"
+                          : len === 3
+                          ? "md:grid-cols-3"
+                          : "md:grid-cols-4 lg:grid-cols-4";
+                        return (
+                          <div className={`grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-4 gap-x-2.5 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 w-full items-stretch ${gridColsClass}`}>
+                            {activePromoProducts.map((product) => (
+                              <div
+                                key={product.id}
+                                className="group flex flex-col justify-between h-full w-full"
+                              >
+                                <div>
+                                  <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1.5 sm:mb-2">
+                                    {product.image ? (
+                                      <img
+                                        src={product.image}
+                                        alt={product.name}
+                                        loading="lazy"
+                                        decoding="async"
+                                        className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300"
+                                        onError={(e) => {
+                                          (e.currentTarget as HTMLImageElement).src =
+                                            "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-none">
+                                        <Package size={20} className="text-[#ffd025]/70" />
+                                        <span className="text-[8px] sm:text-[10px] mt-0.5 font-semibold uppercase">Fellas</span>
+                                      </div>
+                                    )}
 
-                                <div className="absolute top-0 left-0 z-10">
-                                  <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
-                                    PROMO
+                                    <div className="absolute top-0 left-0 z-10">
+                                      <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
+                                        PROMO
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="h-3.5 sm:h-4 flex items-center mb-0.5 overflow-hidden">
+                                    {(product.aisle || product.category) ? (
+                                      <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
+                                        {product.aisle || product.category}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[7.5px] sm:text-[9px] font-medium uppercase tracking-wider text-transparent select-none">
+                                        -
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <h4
+                                    title={product.name}
+                                    className="text-[9.5px] xs:text-[10px] sm:text-[11.5px] md:text-[12px] font-semibold text-white leading-tight line-clamp-2 h-7 sm:h-8 md:h-8.5 block w-full group-hover:text-[#ffd025] transition-colors"
+                                  >
+                                    {product.name}
+                                  </h4>
+                                </div>
+
+                                <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1">
+                                  <span className="text-[11px] sm:text-xs md:text-sm font-black text-[#ffd025] truncate">
+                                    ${Number(product.price || 0).toLocaleString("es-CL")}
                                   </span>
+
+                                  <button
+                                    onClick={() => handleAddToCartClick(product)}
+                                    disabled={!isStoreOpen}
+                                    className="h-6 px-1.5 sm:px-2.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 rounded-none hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                                    title="Añadir al carrito"
+                                    aria-label="Añadir al carrito"
+                                  >
+                                    <Plus size={12} strokeWidth={2.5} />
+                                    <span className="hidden sm:inline text-[10px]">Añadir</span>
+                                  </button>
                                 </div>
                               </div>
-
-                              <div className="h-3.5 sm:h-4 flex items-center mb-0.5 overflow-hidden">
-                                {(product.aisle || product.category) ? (
-                                  <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
-                                    {product.aisle || product.category}
-                                  </span>
-                                ) : (
-                                  <span className="text-[7.5px] sm:text-[9px] font-medium uppercase tracking-wider text-transparent select-none">
-                                    -
-                                  </span>
-                                )}
-                              </div>
-
-                              <h4
-                                title={product.name}
-                                className="text-[9.5px] xs:text-[10px] sm:text-[11.5px] md:text-[12px] font-semibold text-white leading-tight line-clamp-2 h-7 sm:h-8 md:h-8.5 block w-full group-hover:text-[#ffd025] transition-colors"
-                              >
-                                {product.name}
-                              </h4>
-                            </div>
-
-                            <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1">
-                              <span className="text-[11px] sm:text-xs md:text-sm font-black text-[#ffd025] truncate">
-                                ${Number(product.price || 0).toLocaleString("es-CL")}
-                              </span>
-
-                              <button
-                                onClick={() => handleAddToCartClick(product)}
-                                disabled={!isStoreOpen}
-                                className="h-6 px-1.5 sm:px-2.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 rounded-none hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                                title="Añadir al carrito"
-                                aria-label="Añadir al carrito"
-                              >
-                                <Plus size={12} strokeWidth={2.5} />
-                                <span className="hidden sm:inline text-[10px]">Añadir</span>
-                              </button>
-                            </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })()}
                     </div>
                   </section>
                 );
@@ -3503,81 +3539,96 @@ export default function Storefront() {
                       {/* VERSIÓN ESCRITORIO (DESKTOP): 10 productos */}
                       {!isFiltered ? (
                         <div className="hidden md:block">
-                          <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-5 xl:grid-cols-5 gap-x-3.5 gap-y-6 items-stretch w-full">
-                            {homeCollectionProducts.slice(0, 10).map((product) => (
-                              <div
-                                key={product.id}
-                                className="group flex flex-col justify-between h-full w-full"
-                              >
-                                <div>
-                                  <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1.5 sm:mb-2">
-                                    {product.image ? (
-                                      <img
-                                        src={product.image}
-                                        alt={product.name}
-                                        loading="lazy"
-                                        decoding="async"
-                                        className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300"
-                                        onError={(e) => {
-                                          (e.currentTarget as HTMLImageElement).src =
-                                            "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
-                                        }}
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-none">
-                                        <Package size={20} className="text-[#ffd025]/70" />
-                                        <span className="text-[8px] sm:text-[10px] mt-0.5 font-semibold uppercase">Fellas</span>
-                                      </div>
-                                    )}
-
-                                    {product.oferta && (
-                                      <div className="absolute top-0 left-0 z-10">
-                                        <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
-                                          OFERTA
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  <div className="h-3.5 sm:h-4 flex items-center mb-0.5 overflow-hidden">
-                                    {(product.subcategory || product.category || product.aisle) ? (
-                                      <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
-                                        {product.subcategory || product.category || product.aisle}
-                                      </span>
-                                    ) : (
-                                      <span className="text-[7.5px] sm:text-[9px] font-medium uppercase tracking-wider text-transparent select-none">
-                                        -
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  <h4
-                                    title={product.name}
-                                    className="text-[9.5px] xs:text-[10px] sm:text-[11.5px] md:text-[12px] font-semibold text-white leading-tight line-clamp-2 h-7 sm:h-8 md:h-8.5 block w-full group-hover:text-[#ffd025] transition-colors"
+                          {(() => {
+                            const activeProducts = homeCollectionProducts.slice(0, 10);
+                            const len = activeProducts.length;
+                            const gridColsClass = len === 1
+                              ? "md:grid-cols-1 w-full"
+                              : len === 2
+                              ? "md:grid-cols-2"
+                              : len === 3
+                              ? "md:grid-cols-3"
+                              : len === 4
+                              ? "md:grid-cols-4"
+                              : "md:grid-cols-5 lg:grid-cols-5 xl:grid-cols-5";
+                            return (
+                              <div className={`grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 gap-x-3.5 gap-y-6 items-stretch w-full ${gridColsClass}`}>
+                                {activeProducts.map((product) => (
+                                  <div
+                                    key={product.id}
+                                    className="group flex flex-col justify-between h-full w-full"
                                   >
-                                    {product.name}
-                                  </h4>
-                                </div>
+                                    <div>
+                                      <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1.5 sm:mb-2">
+                                        {product.image ? (
+                                          <img
+                                            src={product.image}
+                                            alt={product.name}
+                                            loading="lazy"
+                                            decoding="async"
+                                            className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300"
+                                            onError={(e) => {
+                                              (e.currentTarget as HTMLImageElement).src =
+                                                "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
+                                            }}
+                                          />
+                                        ) : (
+                                          <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-none">
+                                            <Package size={20} className="text-[#ffd025]/70" />
+                                            <span className="text-[8px] sm:text-[10px] mt-0.5 font-semibold uppercase">Fellas</span>
+                                          </div>
+                                        )}
 
-                                <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1">
-                                  <span className="text-[11px] sm:text-xs md:text-sm font-black text-[#ffd025] truncate">
-                                    ${Number(product.price || 0).toLocaleString("es-CL")}
-                                  </span>
+                                        {product.oferta && (
+                                          <div className="absolute top-0 left-0 z-10">
+                                            <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
+                                              OFERTA
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
 
-                                  <button
-                                    onClick={() => handleAddToCartClick(product)}
-                                    disabled={!isStoreOpen}
-                                    className="h-6 px-1.5 sm:px-2.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 rounded-none hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                                    title="Añadir al carrito"
-                                    aria-label="Añadir al carrito"
-                                  >
-                                    <Plus size={12} strokeWidth={2.5} />
-                                    <span className="hidden sm:inline text-[10px]">Añadir</span>
-                                  </button>
-                                </div>
+                                      <div className="h-3.5 sm:h-4 flex items-center mb-0.5 overflow-hidden">
+                                        {(product.subcategory || product.category || product.aisle) ? (
+                                          <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
+                                            {product.subcategory || product.category || product.aisle}
+                                          </span>
+                                        ) : (
+                                          <span className="text-[7.5px] sm:text-[9px] font-medium uppercase tracking-wider text-transparent select-none">
+                                            -
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <h4
+                                        title={product.name}
+                                        className="text-[9.5px] xs:text-[10px] sm:text-[11.5px] md:text-[12px] font-semibold text-white leading-tight line-clamp-2 h-7 sm:h-8 md:h-8.5 block w-full group-hover:text-[#ffd025] transition-colors"
+                                      >
+                                        {product.name}
+                                      </h4>
+                                    </div>
+
+                                    <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1">
+                                      <span className="text-[11px] sm:text-xs md:text-sm font-black text-[#ffd025] truncate">
+                                        ${Number(product.price || 0).toLocaleString("es-CL")}
+                                      </span>
+
+                                      <button
+                                        onClick={() => handleAddToCartClick(product)}
+                                        disabled={!isStoreOpen}
+                                        className="h-6 px-1.5 sm:px-2.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 rounded-none hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                                        title="Añadir al carrito"
+                                        aria-label="Añadir al carrito"
+                                      >
+                                        <Plus size={12} strokeWidth={2.5} />
+                                        <span className="hidden sm:inline text-[10px]">Añadir</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
+                            );
+                          })()}
                         </div>
                       ) : (
                         /* Si hay filtro activo en PC (Pasillo / Categoría): Desglose de catálogo filtrado */
@@ -3587,10 +3638,26 @@ export default function Storefront() {
                             const aisleProducts = settings.contingencyMode ? rawAisleProducts.slice(0, 6) : rawAisleProducts.slice(0, 10);
                             if (aisleProducts.length === 0) return null;
                             const aisleObj = aislesData.find((a) => a.name === aisleName);
+                            const len = aisleProducts.length;
+                            const gridColsClass = len === 1
+                              ? "md:grid-cols-1 w-full"
+                              : len === 2
+                              ? "md:grid-cols-2"
+                              : len === 3
+                              ? "md:grid-cols-3"
+                              : len === 4
+                              ? "md:grid-cols-4"
+                              : len === 5
+                              ? "md:grid-cols-5"
+                              : len === 6
+                              ? "md:grid-cols-6"
+                              : len === 7
+                              ? "md:grid-cols-7"
+                              : "md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8";
 
                             return (
                               <div key={aisleName} id={`aisle-${aisleName}`} className="scroll-mt-24">
-                                <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full">
+                                <div className={`grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full ${gridColsClass}`}>
                                   {aisleProducts.map((product) => (
                                     <div
                                       key={product.id}
