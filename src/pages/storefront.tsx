@@ -1101,24 +1101,76 @@ export default function Storefront() {
   }, 0), [cart]);
   const cartItemCount = useMemo(() => cart.reduce((count, item) => count + item.quantity, 0), [cart]);
 
-  // Check if the store is open based on admin-configured hours (client-side pre-check).
-  // The server independently validates this on every POST /orders request.
-  const isStoreOpen = (() => {
-    if (settings.contingencyMode) return false;
-    const openTime = settings.openTime ?? "11:00";
-    const closeTime = settings.closeTime ?? "23:00";
-    const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    const [oh = 11, om = 0] = openTime.split(":").map(Number);
-    const [ch = 23, cm = 0] = closeTime.split(":").map(Number);
-    const openMinutes = oh * 60 + om;
-    const closeMinutes = ch * 60 + cm;
-    // Cross-midnight range (e.g. 11:00 – 01:00): open if AFTER open OR BEFORE close
-    if (closeMinutes <= openMinutes) {
-      return currentMinutes >= openMinutes || currentMinutes < closeMinutes;
+  // Helper para parsear cualquier formato de hora (24h "11:00", 12h con AM/PM "11:00 AM", "23:45 PM", etc.) a minutos del día
+  const parseTimeToMinutes = (rawStr?: string, defaultMinutes = 0): number => {
+    if (!rawStr || typeof rawStr !== "string") return defaultMinutes;
+    const str = rawStr.trim().toUpperCase();
+    if (!str) return defaultMinutes;
+
+    const isPM = str.includes("PM");
+    const isAM = str.includes("AM");
+
+    // Extraer solo números y dos puntos
+    const cleaned = str.replace(/[^0-9:]/g, "");
+    const parts = cleaned.split(":");
+    let hours = parseInt(parts[0] || "0", 10);
+    const minutes = parseInt(parts[1] || "0", 10);
+
+    if (isNaN(hours)) hours = 0;
+    const validMinutes = isNaN(minutes) ? 0 : Math.min(59, Math.max(0, minutes));
+
+    if (isPM && hours < 12) {
+      hours += 12;
+    } else if (isAM && hours === 12) {
+      hours = 0;
     }
-    return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
-  })();
+
+    hours = Math.min(23, Math.max(0, hours));
+    return hours * 60 + validMinutes;
+  };
+
+  // Verificación del estado de apertura de la tienda (robusto a AM/PM, 24h y zona horaria Chile / Local)
+  const isStoreOpen = useMemo(() => {
+    const openTime = settings.openTime || "11:00";
+    const closeTime = settings.closeTime || "23:45";
+
+    const openMinutes = parseTimeToMinutes(openTime, 11 * 60);
+    const closeMinutes = parseTimeToMinutes(closeTime, 23 * 60 + 45);
+
+    const now = new Date();
+    const localMinutes = now.getHours() * 60 + now.getMinutes();
+
+    // Obtener minutos actuales en zona horaria de Chile (America/Santiago)
+    let chileMinutes = localMinutes;
+    try {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Santiago",
+        hour: "numeric",
+        minute: "numeric",
+        hour12: false,
+      }).formatToParts(now);
+      const h = Number(parts.find((p) => p.type === "hour")?.value);
+      const m = Number(parts.find((p) => p.type === "minute")?.value);
+      if (!isNaN(h) && !isNaN(m)) {
+        chileMinutes = (h === 24 ? 0 : h) * 60 + m;
+      }
+    } catch {
+      chileMinutes = localMinutes;
+    }
+
+    const checkWindow = (curr: number): boolean => {
+      // 24 horas abierto si apertura y cierre son iguales
+      if (openMinutes === closeMinutes) return true;
+      // Horario que cruza la medianoche (ej: 11:00 a 02:00 de la madrugada)
+      if (closeMinutes < openMinutes) {
+        return curr >= openMinutes || curr <= closeMinutes;
+      }
+      // Horario normal dentro del mismo día (ej: 11:00 a 23:45)
+      return curr >= openMinutes && curr <= closeMinutes;
+    };
+
+    return checkWindow(chileMinutes) || checkWindow(localMinutes);
+  }, [settings.openTime, settings.closeTime]);
 
   const deliveryMinimum = settings.deliveryMinimum ?? 10000;
   const hasLocations = deliveryLocations.length > 0;
@@ -6116,7 +6168,12 @@ export default function Storefront() {
                               </label>
                               <input
                                 type="time"
-                                value={settingsDraft.openTime ?? "11:00"}
+                                value={(() => {
+                                  const mins = parseTimeToMinutes(settingsDraft.openTime || "11:00", 11 * 60);
+                                  const h = Math.floor(mins / 60) % 24;
+                                  const m = mins % 60;
+                                  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+                                })()}
                                 onChange={(e) =>
                                   setSettingsDraft({ ...settingsDraft, openTime: e.target.value })
                                 }
@@ -6129,7 +6186,12 @@ export default function Storefront() {
                               </label>
                               <input
                                 type="time"
-                                value={settingsDraft.closeTime ?? "23:00"}
+                                value={(() => {
+                                  const mins = parseTimeToMinutes(settingsDraft.closeTime || "23:45", 23 * 60 + 45);
+                                  const h = Math.floor(mins / 60) % 24;
+                                  const m = mins % 60;
+                                  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+                                })()}
                                 onChange={(e) =>
                                   setSettingsDraft({ ...settingsDraft, closeTime: e.target.value })
                                 }
