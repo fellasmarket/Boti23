@@ -66,6 +66,17 @@ export interface Setting {
     relative_time_description: string;
     text: string;
   }>;
+  galleryTitle?: string;
+  gallerySubtitle?: string;
+  galleryImages?: Array<{
+    id: string;
+    url: string;
+    title?: string;
+    aisle?: string;
+    buttonText?: string;
+    caption?: string;
+    link?: string;
+  }>;
 }
 
 export interface Category {
@@ -296,6 +307,52 @@ const DEFAULT_DB: DatabaseSchema = {
         rating: 5,
         relative_time_description: "Hace 3 semanas",
         text: "Pedimos por WhatsApp y la entrega llegó en 20 minutos exacta. Todo muy bien empaquetado y los tragos heladísimos. Se pasaron."
+      }
+    ],
+    galleryTitle: "Galería Fella's",
+    gallerySubtitle: "Nuestros productos, ambiente y promociones en cada momento",
+    galleryImages: [
+      {
+        id: "gal-1",
+        url: "https://images.unsplash.com/photo-1535958636474-b021ee887b13?auto=format&fit=crop&q=80&w=800",
+        title: "Cervezas Heladas",
+        aisle: "Botillería",
+        buttonText: "Ver más"
+      },
+      {
+        id: "gal-2",
+        url: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=80&w=800",
+        title: "Destilados & Pisco",
+        aisle: "Botillería",
+        buttonText: "Ver más"
+      },
+      {
+        id: "gal-3",
+        url: "https://images.unsplash.com/photo-1608270111166-5d6e2e50cf16?auto=format&fit=crop&q=80&w=800",
+        title: "Packs & Previa",
+        aisle: "Promociones",
+        buttonText: "Ver más"
+      },
+      {
+        id: "gal-4",
+        url: "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?auto=format&fit=crop&q=80&w=800",
+        title: "Vinos Seleccionados",
+        aisle: "Botillería",
+        buttonText: "Ver más"
+      },
+      {
+        id: "gal-5",
+        url: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=800",
+        title: "Snacks & Picoteo",
+        aisle: "Minimarket",
+        buttonText: "Ver más"
+      },
+      {
+        id: "gal-6",
+        url: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=800",
+        title: "Combos Especiales",
+        aisle: "Promociones",
+        buttonText: "Ver más"
       }
     ],
   },

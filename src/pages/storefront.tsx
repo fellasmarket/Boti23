@@ -86,6 +86,17 @@ declare module "@workspace/api-client-react" {
       relative_time_description: string;
       text: string;
     }>;
+    galleryTitle?: string;
+    gallerySubtitle?: string;
+    galleryImages?: Array<{
+      id: string;
+      url: string;
+      title?: string;
+      aisle?: string;
+      buttonText?: string;
+      caption?: string;
+      link?: string;
+    }>;
   }
   interface Product {
     contingencyEnabled?: boolean;
@@ -164,10 +175,10 @@ import {
   LogIn,
   AlertTriangle,
   ExternalLink,
+  Camera,
 } from "lucide-react";
 import * as XLSX from "xlsx";
-import { APIProvider } from "@vis.gl/react-google-maps";
-import { GoogleReviews } from "@/components/google-reviews";
+import { StoreGallery, DEFAULT_GALLERY_IMAGES, GalleryImageItem } from "@/components/store-gallery";
 
 function downloadProductsExcel(products: Product[]) {
   const sorted = [...products].sort((a, b) => {
@@ -733,7 +744,7 @@ export default function Storefront() {
 
   // Admin Progressive Disclosure & Guided Steps State
   const [settingsSubTab, setSettingsSubTab] = useState<
-    "all" | "brand" | "ticker" | "banners" | "featured" | "delivery" | "hours" | "contingency" | "contact"
+    "all" | "brand" | "ticker" | "banners" | "featured" | "delivery" | "hours" | "contingency" | "contact" | "gallery"
   >("all");
   const [openSettingsSections, setOpenSettingsSections] = useState<Record<string, boolean>>({
     brand: true,
@@ -744,16 +755,12 @@ export default function Storefront() {
     hours: false,
     contingency: false,
     contact: false,
+    gallery: false,
   });
   const [featuredRecoSearch, setFeaturedRecoSearch] = useState("");
   const [featuredCollecSearch, setFeaturedCollecSearch] = useState("");
   const [featuredOportunidadesSearch, setFeaturedOportunidadesSearch] = useState("");
   const [featuredPacksSearch, setFeaturedPacksSearch] = useState("");
-  const [newReviewAuthor, setNewReviewAuthor] = useState("");
-  const [newReviewText, setNewReviewText] = useState("");
-  const [newReviewRating, setNewReviewRating] = useState(5);
-  const [newReviewTime, setNewReviewTime] = useState("Hace una semana");
-  const [showAddReviewForm, setShowAddReviewForm] = useState(false);
   const toggleSettingsSection = (sec: string) => {
     setOpenSettingsSections((p) => ({ ...p, [sec]: !p[sec] }));
   };
@@ -3198,12 +3205,12 @@ export default function Storefront() {
 
                 const recommendedSection = (
                   <>
-                    <div className={`w-full px-3 sm:px-6 md:px-8 ${isFiltered ? "mt-6 sm:mt-8 mb-4 sm:mb-6" : "mt-2 sm:mt-3 mb-1.5 sm:mb-2"} flex items-center gap-3`}>
-                      <div className="flex-1 border-t border-white/20"></div>
-                      <span className="text-[10px] sm:text-xs md:text-sm font-black tracking-widest text-[#ffd025] uppercase shrink-0">
+                    <div className={`w-full px-3 sm:px-6 md:px-8 ${isFiltered ? "mt-4 sm:mt-6 mb-2 sm:mb-2.5" : "mt-2 sm:mt-3 mb-1.5 sm:mb-2"} flex items-center gap-3 sm:gap-4`}>
+                      <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/20 to-white/20" />
+                      <span className="text-[10px] sm:text-xs md:text-sm font-black tracking-widest text-[#ffd025] uppercase shrink-0 px-1 select-none whitespace-nowrap drop-shadow">
                         #NUESTROSRECOMENDADOS
                       </span>
-                      <div className="flex-1 border-t border-white/20"></div>
+                      <div className="flex-1 h-px bg-gradient-to-l from-transparent via-white/20 to-white/20" />
                     </div>
 
                     <section className={`w-full px-3 sm:px-6 md:px-8 ${isFiltered ? "mt-2 sm:mt-4" : "mt-1.5 sm:mt-3"}`}>
@@ -3217,47 +3224,47 @@ export default function Storefront() {
                         />
                       </div>
 
-                      <div className="grid grid-cols-4 gap-x-2 sm:gap-x-4 w-full items-stretch">
+                      <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4 gap-x-2.5 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 w-full items-stretch">
                         {promoProducts.slice(0, 4).map((product) => (
                           <div
                             key={product.id}
-                            className="group flex flex-col justify-between h-full w-full bg-white/[0.02] border border-white/5 p-2 sm:p-3 hover:border-[#ffd025]/30 transition-all"
+                            className="group flex flex-col justify-between h-full w-full"
                           >
                             <div>
-                              <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-2 sm:mb-3">
+                              <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1.5 sm:mb-2">
                                 {product.image ? (
                                   <img
                                     src={product.image}
                                     alt={product.name}
                                     loading="lazy"
                                     decoding="async"
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300"
                                     onError={(e) => {
                                       (e.currentTarget as HTMLImageElement).src =
                                         "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
                                     }}
                                   />
                                 ) : (
-                                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5">
-                                    <Package size={22} className="text-[#ffd025]/70" />
-                                    <span className="text-[9px] mt-0.5 font-semibold uppercase">Fellas</span>
+                                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-none">
+                                    <Package size={20} className="text-[#ffd025]/70" />
+                                    <span className="text-[8px] sm:text-[10px] mt-0.5 font-semibold uppercase">Fellas</span>
                                   </div>
                                 )}
 
                                 <div className="absolute top-0 left-0 z-10">
-                                  <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider shadow">
+                                  <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded-none shadow">
                                     PROMO
                                   </span>
                                 </div>
                               </div>
 
-                              <div className="h-4 flex items-center mb-0.5 overflow-hidden">
+                              <div className="h-3.5 sm:h-4 flex items-center mb-0.5 overflow-hidden">
                                 {(product.aisle || product.category) ? (
-                                  <span className="text-[8px] sm:text-[10px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
+                                  <span className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
                                     {product.aisle || product.category}
                                   </span>
                                 ) : (
-                                  <span className="text-[8px] sm:text-[10px] font-medium uppercase tracking-wider text-transparent select-none">
+                                  <span className="text-[7.5px] sm:text-[9px] font-medium uppercase tracking-wider text-transparent select-none">
                                     -
                                   </span>
                                 )}
@@ -3265,26 +3272,26 @@ export default function Storefront() {
 
                               <h4
                                 title={product.name}
-                                className="text-[10px] sm:text-[12px] md:text-[13px] font-bold text-white leading-tight line-clamp-2 h-8 sm:h-9 block w-full group-hover:text-[#ffd025] transition-colors"
+                                className="text-[9.5px] xs:text-[10px] sm:text-[11.5px] md:text-[12px] font-semibold text-white leading-tight line-clamp-2 h-7 sm:h-8 md:h-8.5 block w-full group-hover:text-[#ffd025] transition-colors"
                               >
                                 {product.name}
                               </h4>
                             </div>
 
-                            <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between gap-1">
-                              <span className="text-xs sm:text-sm md:text-base font-black text-[#ffd025] truncate">
+                            <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1">
+                              <span className="text-[11px] sm:text-xs md:text-sm font-black text-[#ffd025] truncate">
                                 ${Number(product.price || 0).toLocaleString("es-CL")}
                               </span>
 
                               <button
                                 onClick={() => handleAddToCartClick(product)}
                                 disabled={!isStoreOpen}
-                                className="h-7 px-2 sm:px-3 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                                className="h-6 px-1.5 sm:px-2.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[10px] sm:text-xs uppercase transition-all flex items-center justify-center gap-1 rounded-none hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                                 title="Añadir al carrito"
                                 aria-label="Añadir al carrito"
                               >
-                                <Plus size={13} strokeWidth={2.5} />
-                                <span className="hidden sm:inline">Añadir</span>
+                                <Plus size={12} strokeWidth={2.5} />
+                                <span className="hidden sm:inline text-[10px]">Añadir</span>
                               </button>
                             </div>
                           </div>
@@ -3296,27 +3303,16 @@ export default function Storefront() {
 
                 const collectionsSection = (
                   <>
-                    <div className={`w-full px-3 sm:px-6 md:px-8 ${isFiltered ? "mt-2 sm:mt-3 mb-1.5 sm:mb-2" : "mt-5 sm:mt-7 mb-2.5 sm:mb-3"} flex items-center justify-between`}>
-                      <span className="text-[10px] sm:text-xs md:text-sm font-black tracking-widest text-[#ffd025] uppercase">
+                    <div className={`w-full px-3 sm:px-6 md:px-8 ${isFiltered ? "mt-4 sm:mt-6 mb-2 sm:mb-2.5" : "mt-5 sm:mt-7 mb-2 sm:mb-2.5"} flex items-center gap-3 sm:gap-4`}>
+                      <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/20 to-white/20" />
+                      <span className="text-[10px] sm:text-xs md:text-sm font-black tracking-widest text-[#ffd025] uppercase shrink-0 px-1 select-none whitespace-nowrap drop-shadow">
                         #NUESTRASCOLECCIONES
                       </span>
-                      {!settings.contingencyMode && (
-                        <button
-                          onClick={() => {
-                            setShowDedicatedProductsPage(true);
-                            window.scrollTo({ top: 0, behavior: "smooth" });
-                          }}
-                          className="text-[10px] sm:text-xs font-bold text-gray-400 hover:text-[#ffd025] transition-colors flex items-center gap-0.5 cursor-pointer bg-transparent border-0 p-0"
-                          title="Ver catálogo completo"
-                        >
-                          <span>Ver más</span>
-                          <ChevronRight size={13} strokeWidth={2.5} />
-                        </button>
-                      )}
+                      <div className="flex-1 h-px bg-gradient-to-l from-transparent via-white/20 to-white/20" />
                     </div>
 
-                    <section className={`w-full px-3 sm:px-6 md:px-8 ${isFiltered ? "mt-1.5 sm:mt-3" : "mt-2 sm:mt-4"}`}>
-                      <div className="w-full h-16 sm:h-28 md:h-48 lg:h-60 xl:h-72 overflow-hidden rounded-none border border-white/10 mb-4 sm:mb-6 bg-black select-none">
+                    <section className={`w-full px-3 sm:px-6 md:px-8 ${isFiltered ? "mt-2 sm:mt-4" : "mt-1.5 sm:mt-3"}`}>
+                      <div className="w-full h-16 sm:h-28 md:h-48 lg:h-60 xl:h-72 overflow-hidden rounded-none border border-white/10 mb-3 sm:mb-4 bg-black select-none">
                         <img
                           src={settings.aislesBannerImage || "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=1600&auto=format&fit=crop&q=80"}
                           alt="Pasillos"
@@ -3332,7 +3328,7 @@ export default function Storefront() {
                           {homeCollectionProducts.slice(0, 6).map((product) => (
                             <div
                               key={product.id}
-                              className="group flex flex-col justify-between h-full w-full bg-white/[0.02] border border-white/5 p-1.5"
+                              className="group flex flex-col justify-between h-full w-full"
                             >
                               <div>
                                 <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1">
@@ -3490,35 +3486,10 @@ export default function Storefront() {
                             const rawAisleProducts = groupedByAisle[aisleName] || [];
                             const aisleProducts = settings.contingencyMode ? rawAisleProducts.slice(0, 6) : rawAisleProducts.slice(0, 10);
                             if (aisleProducts.length === 0) return null;
+                            const aisleObj = aislesData.find((a) => a.name === aisleName);
 
                             return (
                               <div key={aisleName} id={`aisle-${aisleName}`} className="scroll-mt-24">
-                                <div className="flex items-center justify-between gap-3 mb-3">
-                                  <div className="flex items-center gap-2">
-                                    <h3 className="text-sm sm:text-base font-black uppercase tracking-wider text-[#ffd025]">
-                                      {aisleName}
-                                    </h3>
-                                    <span className="text-[10px] text-gray-400 font-semibold uppercase">
-                                      ({rawAisleProducts.length} {rawAisleProducts.length === 1 ? "producto" : "productos"})
-                                    </span>
-                                  </div>
-                                  {rawAisleProducts.length > 10 && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveAisle(aisleName);
-                                        setActiveCategory("");
-                                        setShowDedicatedProductsPage(true);
-                                        setDedicatedViewMode("pasillo");
-                                        window.scrollTo({ top: 0, behavior: "smooth" });
-                                      }}
-                                      className="text-xs font-bold text-[#ffd025] hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-0 p-0"
-                                    >
-                                      <span>Ver más</span>
-                                      <ChevronRight size={14} />
-                                    </button>
-                                  )}
-                                </div>
                                 <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full">
                                   {aisleProducts.map((product) => (
                                     <div
@@ -3620,14 +3591,8 @@ export default function Storefront() {
                 );
               })()}
 
-              {/* SECCIÓN #NUESTROSCLIENTES: Reseñas en Vivo Conectadas con Google Maps */}
-              <GoogleReviews
-                placeId={settings.googleMapsPlaceId || "ChIJsQKhaXwlGJYRw_eFoWzOXyA"}
-                defaultRating={settings.googleMapsRating || 5.0}
-                userRatingCount={settings.googleMapsReviewsCount || 13}
-                initialReviews={settings.googleMapsReviews}
-                placeName={settings.pageTitle || "Fella's Market 2"}
-              />
+              {/* SECCIÓN GALERÍA 4:5 SUELTA: 6 en PC, 2 en Celular, leve zoom, solo imagen sin textos ni botones */}
+              <StoreGallery images={settings.galleryImages} />
             </>
           )}
 
@@ -4434,6 +4399,7 @@ export default function Storefront() {
                           hours: nextVal,
                           contingency: nextVal,
                           contact: nextVal,
+                          gallery: nextVal,
                         });
                       }}
                       className="px-3.5 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-xs font-bold transition-all border border-white/10 flex items-center gap-2"
@@ -4454,7 +4420,7 @@ export default function Storefront() {
                 {/* Step Sub-Tabs (Paso a Paso) */}
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-white/10 scrollbar-hide">
                   {[
-                    { id: "all", label: "Todos los Ajustes", icon: Layers, badge: "8 Plegables" },
+                    { id: "all", label: "Todos los Ajustes", icon: Layers, badge: "9 Plegables" },
                     { id: "brand", label: "1. Marca & Logo", icon: Edit3, badge: settingsDraft.pageTitle || "Tienda" },
                     { id: "ticker", label: "2. Avisos Ticker", icon: Sparkles, badge: `${(settingsDraft.announcements ?? []).length} avisos` },
                     { id: "banners", label: "3. Banners de la Tienda", icon: ImageIcon, badge: `${(settingsDraft.bannerSlides ?? []).length} slides + 2 fijos` },
@@ -4463,6 +4429,7 @@ export default function Storefront() {
                     { id: "hours", label: "6. Horarios de Pedido", icon: Clock, badge: `${settingsDraft.openTime ?? "11:00"} - ${settingsDraft.closeTime ?? "23:00"}` },
                     { id: "contingency", label: "7. Contingencia", icon: Ban, badge: settingsDraft.contingencyMode ? "🔴 Activo" : "🟢 Normal", highlight: Boolean(settingsDraft.contingencyMode) },
                     { id: "contact", label: "8. Contacto & Redes", icon: Phone, badge: settingsDraft.contactPhone ? "Listo" : "Incompleto" },
+                    { id: "gallery", label: "9. Galería 4:5", icon: Camera, badge: `${(settingsDraft.galleryImages ?? []).length || 6} fotos` },
                   ].map((step) => {
                     const Icon = step.icon;
                     const isActive = settingsSubTab === step.id;
@@ -6586,210 +6553,6 @@ export default function Storefront() {
                                 />
                               </div>
                             </div>
-
-                            <div className="pt-4 border-t border-white/10 space-y-4 mt-3 bg-[#12121d] p-4 sm:p-5 rounded-2xl border border-white/5">
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/10">
-                                <div>
-                                  <h5 className="text-xs font-black uppercase text-[#ffd025] tracking-wider flex items-center gap-1.5">
-                                    <span>⭐</span> Conexión & Gestor de Reseñas de Google Maps
-                                  </h5>
-                                  <p className="text-[11px] text-gray-400 mt-0.5">
-                                    Configura tu Place ID y administra las opiniones reales de clientes que se muestran en el pie de página.
-                                  </p>
-                                </div>
-                                <a
-                                  href={`https://www.google.com/maps/place/?q=place_id:${settingsDraft.googleMapsPlaceId || "ChIJsQKhaXwlGJYRw_eFoWzOXyA"}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="px-3 py-1.5 bg-white/5 hover:bg-[#ffd025]/20 border border-white/10 hover:border-[#ffd025]/40 text-[#ffd025] rounded-xl text-[10px] font-bold uppercase transition-all flex items-center gap-1.5 self-start sm:self-auto shrink-0"
-                                >
-                                  <MapPin size={12} className="text-red-400" /> Ver en Google Maps <ExternalLink size={10} />
-                                </a>
-                              </div>
-
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div className="sm:col-span-1">
-                                  <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Google Place ID</label>
-                                  <input
-                                    type="text"
-                                    value={settingsDraft.googleMapsPlaceId ?? "ChIJsQKhaXwlGJYRw_eFoWzOXyA"}
-                                    onChange={(e) => setSettingsDraft({ ...settingsDraft, googleMapsPlaceId: e.target.value })}
-                                    className="w-full bg-[#181826] border border-white/10 rounded-xl p-2.5 text-white text-xs font-mono focus:border-[#ffd025]"
-                                    placeholder="ChIJsQKhaXwlGJYRw_eFoWzOXyA"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Calificación Estrellas (1 - 5)</label>
-                                  <input
-                                    type="number"
-                                    step="0.1"
-                                    max="5"
-                                    min="1"
-                                    value={settingsDraft.googleMapsRating ?? 5.0}
-                                    onChange={(e) => setSettingsDraft({ ...settingsDraft, googleMapsRating: Number(e.target.value) })}
-                                    className="w-full bg-[#181826] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#ffd025]"
-                                    placeholder="5.0"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Total de Opiniones</label>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    value={settingsDraft.googleMapsReviewsCount ?? 13}
-                                    onChange={(e) => setSettingsDraft({ ...settingsDraft, googleMapsReviewsCount: Number(e.target.value) })}
-                                    className="w-full bg-[#181826] border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#ffd025]"
-                                    placeholder="13"
-                                  />
-                                </div>
-                              </div>
-
-                              {/* Lista de Reseñas Configuradas */}
-                              <div className="space-y-3 pt-2">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[11px] font-black text-white uppercase tracking-wider">
-                                    Reseñas Reales Visibles ({(settingsDraft.googleMapsReviews || []).length}):
-                                  </span>
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => setShowAddReviewForm(!showAddReviewForm)}
-                                      className="px-3 py-1 bg-[#ffd025] hover:bg-[#e6b800] text-black rounded-lg text-[10.5px] font-bold transition-all flex items-center gap-1 shadow"
-                                    >
-                                      <Plus size={12} /> {showAddReviewForm ? "Cerrar Formulario" : "Agregar Reseña Real"}
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {/* Formulario para agregar reseña */}
-                                {showAddReviewForm && (
-                                  <div className="bg-[#181826] p-3.5 rounded-xl border border-[#ffd025]/30 space-y-3 animate-fade-in">
-                                    <span className="text-[10px] font-black text-[#ffd025] uppercase tracking-wider block">
-                                      ➕ Nueva Reseña de Cliente de Google Maps
-                                    </span>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                      <div>
-                                        <label className="block text-[9.5px] text-gray-400 uppercase font-bold mb-1">Nombre del Cliente *</label>
-                                        <input
-                                          type="text"
-                                          value={newReviewAuthor}
-                                          onChange={(e) => setNewReviewAuthor(e.target.value)}
-                                          placeholder="Ej: Juan Pérez"
-                                          className="w-full bg-[#12121d] border border-white/10 rounded-lg p-2 text-white text-xs"
-                                        />
-                                      </div>
-                                      <div>
-                                        <label className="block text-[9.5px] text-gray-400 uppercase font-bold mb-1">Calificación (1 - 5) *</label>
-                                        <select
-                                          value={newReviewRating}
-                                          onChange={(e) => setNewReviewRating(Number(e.target.value))}
-                                          className="w-full bg-[#12121d] border border-white/10 rounded-lg p-2 text-white text-xs"
-                                        >
-                                          <option value={5}>⭐⭐⭐⭐⭐ (5 Estrellas)</option>
-                                          <option value={4}>⭐⭐⭐⭐ (4 Estrellas)</option>
-                                          <option value={3}>⭐⭐⭐ (3 Estrellas)</option>
-                                        </select>
-                                      </div>
-                                      <div>
-                                        <label className="block text-[9.5px] text-gray-400 uppercase font-bold mb-1">Tiempo de la reseña</label>
-                                        <input
-                                          type="text"
-                                          value={newReviewTime}
-                                          onChange={(e) => setNewReviewTime(e.target.value)}
-                                          placeholder="Ej: Hace 3 días"
-                                          className="w-full bg-[#12121d] border border-white/10 rounded-lg p-2 text-white text-xs"
-                                        />
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <label className="block text-[9.5px] text-gray-400 uppercase font-bold mb-1">Texto de la Reseña *</label>
-                                      <textarea
-                                        rows={2}
-                                        value={newReviewText}
-                                        onChange={(e) => setNewReviewText(e.target.value)}
-                                        placeholder="Copia y pega aquí el comentario real del cliente..."
-                                        className="w-full bg-[#12121d] border border-white/10 rounded-lg p-2 text-white text-xs"
-                                      />
-                                    </div>
-                                    <div className="flex justify-end gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => setShowAddReviewForm(false)}
-                                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-400 rounded-lg text-xs"
-                                      >
-                                        Cancelar
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          if (!newReviewAuthor.trim() || !newReviewText.trim()) {
-                                            showToast("Ingresa el nombre del cliente y el texto");
-                                            return;
-                                          }
-                                          const newRev = {
-                                            id: `rev-${Date.now()}`,
-                                            author_name: newReviewAuthor.trim(),
-                                            rating: newReviewRating,
-                                            relative_time_description: newReviewTime.trim() || "Hace poco",
-                                            text: newReviewText.trim(),
-                                            author_photo: ""
-                                          };
-                                          const currentList = settingsDraft.googleMapsReviews || [];
-                                          setSettingsDraft({
-                                            ...settingsDraft,
-                                            googleMapsReviews: [newRev, ...currentList]
-                                          });
-                                          setNewReviewAuthor("");
-                                          setNewReviewText("");
-                                          setShowAddReviewForm(false);
-                                          showToast(`Reseña de "${newRev.author_name}" agregada`);
-                                        }}
-                                        className="px-3.5 py-1.5 bg-[#ffd025] text-black font-bold rounded-lg text-xs hover:bg-[#e6b800]"
-                                      >
-                                        Guardar en la Lista
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Lista de Tarjetas */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-72 overflow-y-auto pr-1">
-                                  {(settingsDraft.googleMapsReviews || []).map((rev, rIdx) => (
-                                    <div
-                                      key={rev.id || rIdx}
-                                      className="bg-[#181826] border border-white/5 rounded-xl p-3 flex flex-col justify-between hover:border-white/15 transition-all text-xs"
-                                    >
-                                      <div>
-                                        <div className="flex items-center justify-between mb-1.5">
-                                          <div className="flex items-center gap-1.5">
-                                            <span className="font-bold text-white truncate max-w-[130px]">{rev.author_name}</span>
-                                            <span className="text-[10px] text-gray-500">· {rev.relative_time_description}</span>
-                                          </div>
-                                          <div className="flex items-center gap-1">
-                                            <span className="text-amber-400 font-bold text-[11px]">{"★".repeat(rev.rating)}</span>
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                const updated = (settingsDraft.googleMapsReviews || []).filter((_, i) => i !== rIdx);
-                                                setSettingsDraft({ ...settingsDraft, googleMapsReviews: updated });
-                                                showToast("Reseña eliminada");
-                                              }}
-                                              className="text-red-400 hover:text-red-300 p-1 ml-1"
-                                              title="Eliminar reseña"
-                                            >
-                                              <Trash2 size={12} />
-                                            </button>
-                                          </div>
-                                        </div>
-                                        <p className="text-gray-300 text-[11px] italic line-clamp-3 leading-snug">
-                                          "{rev.text}"
-                                        </p>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/5">
@@ -6863,6 +6626,168 @@ export default function Storefront() {
                                 </p>
                               </div>
                             </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* SECCIÓN 9: Galería de 6 Imágenes (Aspecto 4:5) */}
+                  {(settingsSubTab === "all" || settingsSubTab === "gallery") && (
+                    <div className="bg-[#13131f]/90 backdrop-blur-2xl rounded-3xl border border-white/10 overflow-hidden shadow-xl shadow-black/50 transition-all">
+                      <button
+                        type="button"
+                        onClick={() => toggleSettingsSection("gallery")}
+                        className="w-full p-5 sm:p-6 flex items-center justify-between text-left hover:bg-white/[0.02] transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                            <Camera size={18} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-black text-white text-base uppercase">Paso 9: Galería de Fotos (Aspecto 4:5)</span>
+                              <span className="text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">
+                                6 Fotos en PC / 2 en Celular
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              Personaliza las 6 fotos con formato vertical 4:5 que se muestran antes del pie de página.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-400">
+                          <span className="text-xs font-mono font-bold hidden sm:inline">
+                            {openSettingsSections.gallery ? "Plegar" : "Editar"}
+                          </span>
+                          {openSettingsSections.gallery ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                        </div>
+                      </button>
+
+                      {openSettingsSections.gallery && (
+                        <div className="p-6 pt-0 border-t border-white/5 space-y-6 animate-fade-in">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3">
+                            <div>
+                              <h5 className="text-xs font-black uppercase text-[#ffd025] tracking-wider flex items-center gap-1.5">
+                                <span>📸</span> 6 Fotos en Formato 4:5 (Sin Recuadro ni Puntas Redondeadas)
+                              </h5>
+                              <p className="text-[11px] text-gray-400 mt-0.5">
+                                En celular se muestran las fotos 1 y 2. En PC se muestran las 6 fotos completas sueltas en la grilla.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSettingsDraft({
+                                  ...settingsDraft,
+                                  galleryImages: [...DEFAULT_GALLERY_IMAGES]
+                                });
+                                showToast("Fotos por defecto restauradas");
+                              }}
+                              className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 self-start sm:self-auto shrink-0"
+                            >
+                              ⚡ Restaurar Fotos por Defecto
+                            </button>
+                          </div>
+
+                          {/* 6 Ranuras de Imagen */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {Array.from({ length: 6 }).map((_, slotIdx) => {
+                              const currentImages = settingsDraft.galleryImages || DEFAULT_GALLERY_IMAGES;
+                              const currentItem: GalleryImageItem = currentImages[slotIdx] || {
+                                id: `gal-${slotIdx + 1}`,
+                                url: "",
+                                title: "",
+                                aisle: "",
+                                buttonText: "Ver más"
+                              };
+
+                              const updateSlotField = (field: keyof GalleryImageItem, val: string) => {
+                                const copy = [...(settingsDraft.galleryImages || DEFAULT_GALLERY_IMAGES)];
+                                copy[slotIdx] = {
+                                  ...(copy[slotIdx] || { id: `gal-${slotIdx + 1}`, url: "" }),
+                                  [field]: val
+                                };
+                                setSettingsDraft({ ...settingsDraft, galleryImages: copy });
+                              };
+
+                              const isMobileSlot = slotIdx < 2;
+
+                              return (
+                                <div
+                                  key={slotIdx}
+                                  className="bg-[#181826] border border-white/10 rounded-2xl p-4 flex flex-col justify-between space-y-3 relative group"
+                                >
+                                  {/* Badge de Ranura */}
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-black text-[#ffd025] bg-[#ffd025]/10 border border-[#ffd025]/20 px-2.5 py-0.5 rounded-lg">
+                                        Foto #{slotIdx + 1}
+                                      </span>
+                                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                                        isMobileSlot
+                                          ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                                          : "bg-blue-500/15 text-blue-300 border border-blue-500/30"
+                                      }`}>
+                                        {isMobileSlot ? "📱 Celular & PC" : "💻 Solo en PC"}
+                                      </span>
+                                    </div>
+                                    <span className="text-[10px] font-mono text-gray-500">
+                                      Aspecto 4:5
+                                    </span>
+                                  </div>
+
+                                  {/* Previsualización en vivo Aspecto 4:5 sin textos ni botones */}
+                                  <div className="relative aspect-[4/5] w-full overflow-hidden bg-black/60 border border-white/10 group-hover:border-[#ffd025]/30 transition-all">
+                                    {currentItem.url ? (
+                                      <img
+                                        src={currentItem.url}
+                                        alt={`Foto ${slotIdx + 1}`}
+                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 gap-2 p-4 text-center">
+                                        <Camera size={28} className="opacity-40" />
+                                        <span className="text-xs">Sin imagen (Formato 4:5)</span>
+                                      </div>
+                                    )}
+                                    <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-black/80 text-[9px] font-mono text-[#ffd025] border border-white/15">
+                                      4:5
+                                    </div>
+                                  </div>
+
+                                  {/* Inputs de URL & Subir archivo */}
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
+                                      URL de Imagen o Subir Archivo
+                                    </label>
+                                    <div className="flex gap-2">
+                                      <input
+                                        type="text"
+                                        value={currentItem.url || ""}
+                                        onChange={(e) => updateSlotField("url", e.target.value)}
+                                        className="flex-1 bg-[#12121d] border border-white/10 rounded-xl p-2 text-white text-xs focus:border-[#ffd025]"
+                                        placeholder="https://images.unsplash.com/..."
+                                      />
+                                      <label
+                                        className="bg-[#ffd025]/10 text-[#ffd025] px-3 rounded-xl flex items-center justify-center cursor-pointer hover:bg-[#ffd025]/20 border border-[#ffd025]/30 shrink-0"
+                                        title="Subir foto desde dispositivo"
+                                      >
+                                        <Upload size={14} />
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          className="hidden"
+                                          onChange={(e) =>
+                                            handleImageUpload(e, (url) => updateSlotField("url", url))
+                                          }
+                                        />
+                                      </label>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
