@@ -1102,13 +1102,24 @@ export default function Storefront() {
   const activeAisles = useMemo(
     () => {
       const keys = Object.keys(groupedByAisle);
+      let list: string[] = [];
       if (activeAisle) {
-        return [activeAisle].filter((a) => (groupedByAisle[a] || []).length > 0 || keys.includes(a));
+        list = [activeAisle].filter((a) => (groupedByAisle[a] || []).length > 0 || keys.includes(a));
+      } else if (activeCategory) {
+        list = keys.filter((k) => (groupedByAisle[k] || []).length > 0);
+      } else {
+        list = allStoreAisles.filter((name) => keys.includes(name)).concat(keys.filter((k) => !allStoreAisles.includes(k)));
       }
-      if (activeCategory) {
-        return keys.filter((k) => (groupedByAisle[k] || []).length > 0);
-      }
-      return allStoreAisles.filter((name) => keys.includes(name)).concat(keys.filter((k) => !allStoreAisles.includes(k)));
+
+      // Strictly preserve custom administrative position order
+      return [...list].sort((a, b) => {
+        const idxA = allStoreAisles.indexOf(a);
+        const idxB = allStoreAisles.indexOf(b);
+        if (idxA === -1 && idxB === -1) return 0;
+        if (idxA === -1) return 1;
+        if (idxB === -1) return -1;
+        return idxA - idxB;
+      });
     },
     [allStoreAisles, groupedByAisle, activeAisle, activeCategory],
   );
