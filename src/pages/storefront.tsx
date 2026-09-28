@@ -1090,9 +1090,15 @@ export default function Storefront() {
   const activeAisles = useMemo(
     () => {
       const keys = Object.keys(groupedByAisle);
+      if (activeAisle) {
+        return [activeAisle].filter((a) => (groupedByAisle[a] || []).length > 0 || keys.includes(a));
+      }
+      if (activeCategory) {
+        return keys.filter((k) => (groupedByAisle[k] || []).length > 0);
+      }
       return allStoreAisles.filter((name) => keys.includes(name)).concat(keys.filter((k) => !allStoreAisles.includes(k)));
     },
-    [allStoreAisles, groupedByAisle],
+    [allStoreAisles, groupedByAisle, activeAisle, activeCategory],
   );
 
   const cartTotal = useMemo(() => cart.reduce((sum, item) => {
