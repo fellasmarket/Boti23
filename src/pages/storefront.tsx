@@ -3543,11 +3543,11 @@ export default function Storefront() {
                         </div>
                       </div>
 
-                      {/* VERSIÓN ESCRITORIO (DESKTOP): 10 productos */}
+                      {/* VERSIÓN ESCRITORIO (DESKTOP): 4 productos */}
                       {!isFiltered ? (
                         <div className="hidden md:block">
                           {(() => {
-                            const activeProducts = homeCollectionProducts.slice(0, 10);
+                            const activeProducts = homeCollectionProducts.slice(0, 4);
                             const len = activeProducts.length;
                             const gridColsClass = len === 1
                               ? "md:grid-cols-1 w-full"
@@ -3746,6 +3746,22 @@ export default function Storefront() {
                               </div>
                             );
                           })}
+                        </div>
+                      )}
+
+                      {/* Botón Ver más en Colecciones */}
+                      {!isFiltered && (
+                        <div className="w-full flex justify-center mt-8 sm:mt-10 pb-2">
+                          <button
+                            onClick={() => {
+                              setShowDedicatedProductsPage(true);
+                              setDedicatedViewMode("catalog");
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            }}
+                            className="px-8 py-3 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-xs sm:text-sm uppercase tracking-widest transition-all rounded-none hover:scale-105 active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#ffd025]/10"
+                          >
+                            <span>Ver catálogo completo</span>
+                          </button>
                         </div>
                       )}
                     </div>
