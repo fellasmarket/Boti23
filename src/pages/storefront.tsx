@@ -3191,8 +3191,9 @@ export default function Storefront() {
                           : len === 7
                           ? "md:grid-cols-7"
                           : "md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8";
+                        const mobileColsClass = len <= 4 ? "grid-cols-2" : "grid-cols-2 xs:grid-cols-3";
                         return (
-                          <div className={`grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full ${gridColsClass}`}>
+                          <div className={`grid ${mobileColsClass} sm:grid-cols-4 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full ${gridColsClass}`}>
                             {processed.map((product) => (
                               <div
                                 key={product.id}
@@ -3476,82 +3477,90 @@ export default function Storefront() {
                         />
                       </div>
 
-                      {/* VERSIÓN PARA CELULAR (MOBILE): 2 filas horizontales de 3 productos (3 y 3) = 6 productos */}
+                      {/* VERSIÓN PARA CELULAR (MOBILE): Si son pocos productos (<=4) muestra 2 por fila; si son más, 3 por fila */}
                       <div className="md:hidden">
-                        <div className="grid grid-cols-3 gap-x-2 gap-y-4 items-stretch w-full">
-                          {homeCollectionProducts.slice(0, 6).map((product) => (
-                            <div
-                              key={product.id}
-                              className="group flex flex-col justify-between h-full w-full"
-                            >
-                              <div>
-                                <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1">
-                                  {product.image ? (
-                                    <img
-                                      src={product.image}
-                                      alt={product.name}
-                                      loading="lazy"
-                                      decoding="async"
-                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                      onError={(e) => {
-                                        (e.currentTarget as HTMLImageElement).src =
-                                          "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
-                                      }}
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5">
-                                      <Package size={16} className="text-[#ffd025]/70" />
-                                      <span className="text-[7px] mt-0.5 font-semibold uppercase">Fellas</span>
-                                    </div>
-                                  )}
-
-                                  {product.oferta && (
-                                    <div className="absolute top-0 left-0 z-10">
-                                      <span className="px-1 py-0.5 bg-red-600 text-white text-[7px] font-black uppercase tracking-wider shadow">
-                                        OFERTA
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-
-                                <div className="h-3 flex items-center mb-0.5 overflow-hidden">
-                                  {(product.subcategory || product.category || product.aisle) ? (
-                                    <span className="text-[7px] font-medium uppercase tracking-wider text-gray-400 truncate block w-full">
-                                      {product.subcategory || product.category || product.aisle}
-                                    </span>
-                                  ) : (
-                                    <span className="text-[7px] font-medium uppercase tracking-wider text-transparent select-none">
-                                      -
-                                    </span>
-                                  )}
-                                </div>
-
-                                <h4
-                                  title={product.name}
-                                  className="text-[9px] font-bold text-white leading-tight line-clamp-2 h-7 block w-full group-hover:text-[#ffd025] transition-colors"
+                        {(() => {
+                          const mobileProducts = homeCollectionProducts.slice(0, 6);
+                          const isFew = mobileProducts.length <= 4;
+                          const gridCols = isFew ? "grid-cols-2" : "grid-cols-3";
+                          return (
+                            <div className={`grid ${gridCols} gap-x-2.5 gap-y-4 items-stretch w-full`}>
+                              {mobileProducts.map((product) => (
+                                <div
+                                  key={product.id}
+                                  className="group flex flex-col justify-between h-full w-full"
                                 >
-                                  {product.name}
-                                </h4>
-                              </div>
+                                  <div>
+                                    <div className="relative w-full aspect-square overflow-hidden bg-black/40 mb-1">
+                                      {product.image ? (
+                                        <img
+                                          src={product.image}
+                                          alt={product.name}
+                                          loading="lazy"
+                                          decoding="async"
+                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                          onError={(e) => {
+                                            (e.currentTarget as HTMLImageElement).src =
+                                              "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80";
+                                          }}
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5">
+                                          <Package size={isFew ? 20 : 16} className="text-[#ffd025]/70" />
+                                          <span className="text-[7px] mt-0.5 font-semibold uppercase">Fellas</span>
+                                        </div>
+                                      )}
 
-                              <div className="mt-1 pt-1 border-t border-white/10 flex items-center justify-between gap-0.5">
-                                <span className="text-[10px] font-black text-[#ffd025] truncate">
-                                  ${Number(product.price || 0).toLocaleString("es-CL")}
-                                </span>
+                                      {product.oferta && (
+                                        <div className="absolute top-0 left-0 z-10">
+                                          <span className="px-1 py-0.5 bg-red-600 text-white text-[7px] font-black uppercase tracking-wider shadow">
+                                            OFERTA
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
 
-                                <button
-                                  onClick={() => handleAddToCartClick(product)}
-                                  disabled={!isStoreOpen}
-                                  className="h-5 px-1.5 bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black text-[9px] uppercase transition-all flex items-center justify-center gap-0.5 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                                  title="Añadir"
-                                  aria-label="Añadir"
-                                >
-                                  <Plus size={10} strokeWidth={2.5} />
-                                </button>
-                              </div>
+                                    <div className="h-3.5 flex items-center mb-0.5 overflow-hidden">
+                                      {(product.subcategory || product.category || product.aisle) ? (
+                                        <span className={`${isFew ? "text-[8px] xs:text-[8.5px]" : "text-[7px]"} font-medium uppercase tracking-wider text-gray-400 truncate block w-full`}>
+                                          {product.subcategory || product.category || product.aisle}
+                                        </span>
+                                      ) : (
+                                        <span className="text-[7px] font-medium uppercase tracking-wider text-transparent select-none">
+                                          -
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <h4
+                                      title={product.name}
+                                      className={`${isFew ? "text-[10.5px] xs:text-[11px]" : "text-[9px]"} font-bold text-white leading-tight line-clamp-2 h-7 sm:h-8 block w-full group-hover:text-[#ffd025] transition-colors`}
+                                    >
+                                      {product.name}
+                                    </h4>
+                                  </div>
+
+                                  <div className="mt-1 pt-1 border-t border-white/10 flex items-center justify-between gap-1">
+                                    <span className={`${isFew ? "text-[11px] xs:text-xs" : "text-[10px]"} font-black text-[#ffd025] truncate`}>
+                                      ${Number(product.price || 0).toLocaleString("es-CL")}
+                                    </span>
+
+                                    <button
+                                      onClick={() => handleAddToCartClick(product)}
+                                      disabled={!isStoreOpen}
+                                      className={`${isFew ? "h-6 px-2 text-[10px]" : "h-5 px-1.5 text-[9px]"} bg-[#ffd025] hover:bg-[#e5b81a] text-black font-black uppercase transition-all flex items-center justify-center gap-1 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0`}
+                                      title="Añadir"
+                                      aria-label="Añadir"
+                                    >
+                                      <Plus size={isFew ? 12 : 10} strokeWidth={2.5} />
+                                      {isFew && <span className="text-[9px] font-black">Añadir</span>}
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
+                          );
+                        })()}
                       </div>
 
                       {/* VERSIÓN ESCRITORIO (DESKTOP): 4 productos */}
@@ -3673,9 +3682,11 @@ export default function Storefront() {
                               ? "md:grid-cols-7"
                               : "md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8";
 
+                            const mobileColsClass = len <= 4 ? "grid-cols-2" : "grid-cols-2 xs:grid-cols-3";
+
                             return (
                               <div key={aisleName} id={`aisle-${aisleName}`} className="scroll-mt-24">
-                                <div className={`grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full ${gridColsClass}`}>
+                                <div className={`grid ${mobileColsClass} sm:grid-cols-4 gap-x-2 sm:gap-x-3.5 gap-y-4 sm:gap-y-6 items-stretch w-full ${gridColsClass}`}>
                                   {aisleProducts.map((product) => (
                                     <div
                                       key={product.id}
