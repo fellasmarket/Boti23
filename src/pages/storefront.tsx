@@ -165,6 +165,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { APIProvider } from "@vis.gl/react-google-maps";
+import { GoogleReviews } from "@/components/google-reviews";
 
 function downloadProductsExcel(products: Product[]) {
   const sorted = [...products].sort((a, b) => {
@@ -3612,57 +3614,11 @@ export default function Storefront() {
                 );
               })()}
 
-              {/* SECCIÓN #NUESTROSCLIENTES: 2 reseñas en celular, 4 reseñas en computador */}
-              <div className="w-full px-3 sm:px-6 md:px-8 mt-10 mb-6 flex items-center gap-3">
-                <div className="flex-1 border-t border-white/20"></div>
-                <span className="text-[10px] sm:text-xs md:text-sm font-black tracking-widest text-[#ffd025] uppercase shrink-0">
-                  #NUESTROSCLIENTES
-                </span>
-                <div className="flex-1 border-t border-white/20"></div>
-              </div>
-
-              <div className="w-full px-3 sm:px-6 md:px-8 mb-10">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {googleMapsData.reviews.slice(0, 4).map((rev, idx) => (
-                    <div
-                      key={rev.id}
-                      className={`bg-[#181826] border border-white/10 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col justify-between hover:border-[#ffd025]/40 transition-all ${
-                        idx >= 2 ? "hidden md:flex" : "flex"
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            {rev.author_photo ? (
-                              <img
-                                src={rev.author_photo}
-                                alt={rev.author_name}
-                                className="w-10 h-10 rounded-full object-cover border border-white/20"
-                              />
-                            ) : (
-                              <div className="w-10 h-10 rounded-full bg-[#ffd025] text-black font-black flex items-center justify-center text-sm">
-                                {rev.author_name.charAt(0)}
-                              </div>
-                            )}
-                            <div>
-                              <h4 className="text-white text-xs sm:text-sm font-bold">{rev.author_name}</h4>
-                              <span className="text-[10px] text-gray-400">{rev.relative_time_description}</span>
-                            </div>
-                          </div>
-                          <div className="flex text-amber-400 text-xs">
-                            {Array.from({ length: rev.rating }).map((_, i) => (
-                              <span key={i}>★</span>
-                            ))}
-                          </div>
-                        </div>
-                        <p className="text-gray-300 text-xs sm:text-[13px] leading-relaxed italic">
-                          "{rev.text}"
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              {/* SECCIÓN #NUESTROSCLIENTES: Reseñas en Vivo Conectadas con Google Maps */}
+              <GoogleReviews
+                placeId={settings.googleMapsPlaceId}
+                defaultRating={settings.googleMapsRating}
+              />
             </>
           )}
 

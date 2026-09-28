@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Storefront from "@/pages/storefront";
+import { APIProvider } from "@vis.gl/react-google-maps";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,13 +17,17 @@ const queryClient = new QueryClient({
   },
 });
 
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={Storefront} />
-      <Route path="/admin" component={Storefront} />
-      <Route component={NotFound} />
-    </Switch>
+    <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
+      <Switch>
+        <Route path="/" component={Storefront} />
+        <Route path="/admin" component={Storefront} />
+        <Route component={NotFound} />
+      </Switch>
+    </APIProvider>
   );
 }
 
