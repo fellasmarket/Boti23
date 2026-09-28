@@ -6732,7 +6732,7 @@ export default function Storefront() {
                                             rating: newReviewRating,
                                             relative_time_description: newReviewTime.trim() || "Hace poco",
                                             text: newReviewText.trim(),
-                                            author_photo: `https://images.unsplash.com/photo-${1535713875002 + Math.floor(Math.random() * 1000)}?auto=format&fit=crop&q=80&w=120`
+                                            author_photo: ""
                                           };
                                           const currentList = settingsDraft.googleMapsReviews || [];
                                           setSettingsDraft({

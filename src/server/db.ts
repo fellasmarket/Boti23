@@ -268,7 +268,7 @@ const DEFAULT_DB: DatabaseSchema = {
       {
         id: "g-1",
         author_name: "Carlos Soto",
-        author_photo: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
+        author_photo: "",
         rating: 5,
         relative_time_description: "Hace 2 días",
         text: "¡Excelente atención y las cervezas siempre llegan ultra heladas! El delivery es súper rápido en Alerce. 100% recomendado."
@@ -276,7 +276,7 @@ const DEFAULT_DB: DatabaseSchema = {
       {
         id: "g-2",
         author_name: "Valentina Muñoz",
-        author_photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120",
+        author_photo: "",
         rating: 5,
         relative_time_description: "Hace una semana",
         text: "Salvaron nuestra junta de amigos un domingo a medianoche. Tienen de todo y el hielo nunca falta. ¡Geniales!"
@@ -284,7 +284,7 @@ const DEFAULT_DB: DatabaseSchema = {
       {
         id: "g-3",
         author_name: "Matías Alarcón",
-        author_photo: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=120",
+        author_photo: "",
         rating: 5,
         relative_time_description: "Hace 2 semanas",
         text: "Muy buena variedad de destilados y snacks. Los precios son justos y la página web es súper fácil de usar."
@@ -292,7 +292,7 @@ const DEFAULT_DB: DatabaseSchema = {
       {
         id: "g-4",
         author_name: "Camila Fernández",
-        author_photo: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=120",
+        author_photo: "",
         rating: 5,
         relative_time_description: "Hace 3 semanas",
         text: "Pedimos por WhatsApp y la entrega llegó en 20 minutos exacta. Todo muy bien empaquetado y los tragos heladísimos. Se pasaron."

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
-import { Star, MessageSquare, ShieldCheck, MapPin, ExternalLink, PlusCircle } from "lucide-react";
+import { Star, MessageSquare, ShieldCheck, MapPin, ExternalLink } from "lucide-react";
 
 export interface GoogleReviewItem {
   id?: string;
@@ -33,40 +33,54 @@ const DEFAULT_REVIEWS: GoogleReviewData[] = [
     rating: 5,
     relativeTimeDescription: "Hace 2 días",
     text: "¡Excelente atención y las cervezas siempre llegan ultra heladas! El delivery es súper rápido en Alerce. 100% recomendado.",
-    authorPhotoUrl: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120"
+    authorPhotoUrl: undefined
   },
   {
     authorName: "Valentina Muñoz",
     rating: 5,
     relativeTimeDescription: "Hace una semana",
     text: "Salvaron nuestra junta de amigos un fin de semana. Tienen de todo, las promos son buenísimas y el hielo nunca falta. ¡Geniales!",
-    authorPhotoUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120"
+    authorPhotoUrl: undefined
   },
   {
     authorName: "Matías Alarcón",
     rating: 5,
     relativeTimeDescription: "Hace 2 semanas",
     text: "Muy buena variedad de destilados y snacks. Los precios son justos y la página web es súper fácil de usar para pedir por WhatsApp.",
-    authorPhotoUrl: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=120"
+    authorPhotoUrl: undefined
   },
   {
     authorName: "Camila Fernández",
     rating: 5,
     relativeTimeDescription: "Hace 3 semanas",
     text: "Pedimos delivery y la entrega llegó en 20 minutos exacta. Todo muy bien empaquetado y los tragos heladísimos. Se pasaron.",
-    authorPhotoUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=120"
+    authorPhotoUrl: undefined
   }
 ];
 
-function mapItemsToData(items?: GoogleReviewItem[]): GoogleReviewData[] {
+// Helper to shuffle reviews so they appear randomly
+function shuffleReviews<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// Filter reviews that strictly have text and map them cleanly (without inventing photos)
+function filterAndMapReviews(items?: GoogleReviewItem[]): GoogleReviewData[] {
   if (!items || items.length === 0) return DEFAULT_REVIEWS;
-  return items.map((r) => ({
-    authorName: r.author_name || "Cliente verificado",
-    authorPhotoUrl: r.author_photo || undefined,
-    rating: Number(r.rating) || 5,
-    relativeTimeDescription: r.relative_time_description || "Hace poco",
-    text: r.text || ""
-  }));
+  const filtered = items
+    .filter((r) => r.text && r.text.trim().length > 0)
+    .map((r) => ({
+      authorName: r.author_name || "Cliente verificado",
+      authorPhotoUrl: r.author_photo && r.author_photo.trim().startsWith("http") ? r.author_photo.trim() : undefined,
+      rating: Number(r.rating) || 5,
+      relativeTimeDescription: r.relative_time_description || "Hace poco",
+      text: r.text.trim()
+    }));
+  return filtered.length > 0 ? filtered : DEFAULT_REVIEWS;
 }
 
 export function GoogleReviews({
@@ -76,19 +90,21 @@ export function GoogleReviews({
   initialReviews,
   placeName: initialPlaceName = "Fella's Market 2",
 }: GoogleReviewsProps) {
-  const [reviews, setReviews] = useState<GoogleReviewData[]>(() => mapItemsToData(initialReviews));
+  // Store all available verified reviews
+  const [allReviews, setAllReviews] = useState<GoogleReviewData[]>(() => filterAndMapReviews(initialReviews));
   const [rating, setRating] = useState<number>(defaultRating);
   const [totalRatingCount, setTotalRatingCount] = useState<number>(userRatingCount);
   const [placeName, setPlaceName] = useState<string>(initialPlaceName);
   const [loading, setLoading] = useState<boolean>(false);
   const [isLiveFromGoogle, setIsLiveFromGoogle] = useState<boolean>(false);
+  const [failedImageAuthors, setFailedImageAuthors] = useState<Record<string, boolean>>({});
 
   const placesLib = useMapsLibrary("places");
 
-  // Keep reviews in sync when initialReviews changes from admin
+  // Keep reviews pool updated when initialReviews changes from admin
   useEffect(() => {
     if (initialReviews && initialReviews.length > 0) {
-      setReviews(mapItemsToData(initialReviews));
+      setAllReviews(filterAndMapReviews(initialReviews));
     }
   }, [initialReviews]);
 
@@ -98,6 +114,7 @@ export function GoogleReviews({
     if (initialPlaceName) setPlaceName(initialPlaceName);
   }, [defaultRating, userRatingCount, initialPlaceName]);
 
+  // Fetch Place Details live from Google Maps
   useEffect(() => {
     if (!placesLib || !placeId) {
       return;
@@ -129,24 +146,26 @@ export function GoogleReviews({
           setTotalRatingCount(Number(activePlace.userRatingCount));
         }
         if (activePlace.displayName) {
-          setPlaceName(typeof activePlace.displayName === "string" ? activePlace.displayName : (activePlace.displayName as any)?.text || activePlace.displayName);
+          setPlaceName(
+            typeof activePlace.displayName === "string"
+              ? activePlace.displayName
+              : (activePlace.displayName as any)?.text || activePlace.displayName
+          );
         }
 
-        // Check if Google returned any text reviews
+        // Only include reviews from Google that actually have written text
         if (activePlace.reviews && Array.isArray(activePlace.reviews) && activePlace.reviews.length > 0) {
-          const mappedReviews: GoogleReviewData[] = activePlace.reviews.slice(0, 6).map((r: any) => ({
-            authorName: r.authorAttribution?.displayName || "Cliente de Google",
-            authorPhotoUrl: r.authorAttribution?.photoUri || undefined,
-            rating: r.rating || 5,
-            relativeTimeDescription: r.relativePublishTimeDescription || "Hace poco",
-            text: r.text || ""
-          }));
-          setReviews(mappedReviews);
-          setIsLiveFromGoogle(true);
-        } else {
-          // If Google didn't return text reviews, use the store's configured reviews
-          if (initialReviews && initialReviews.length > 0) {
-            setReviews(mapItemsToData(initialReviews));
+          const withText = activePlace.reviews.filter((r: any) => r.text && r.text.trim().length > 0);
+          if (withText.length > 0) {
+            const googleMapped: GoogleReviewData[] = withText.map((r: any) => ({
+              authorName: r.authorAttribution?.displayName || "Cliente de Google",
+              authorPhotoUrl: r.authorAttribution?.photoUri || undefined,
+              rating: r.rating || 5,
+              relativeTimeDescription: r.relativePublishTimeDescription || "Hace poco",
+              text: r.text.trim()
+            }));
+            setAllReviews(googleMapped);
+            setIsLiveFromGoogle(true);
           }
         }
       } catch (err) {
@@ -163,7 +182,13 @@ export function GoogleReviews({
     return () => {
       isMounted = false;
     };
-  }, [placesLib, placeId, initialReviews]);
+  }, [placesLib, placeId]);
+
+  // Pick up to 4 random reviews with text on each visit / render
+  const displayedReviews = useMemo(() => {
+    const valid = allReviews.filter((r) => r.text && r.text.trim().length > 0);
+    return shuffleReviews(valid).slice(0, 4);
+  }, [allReviews]);
 
   const googleMapsUrl = `https://www.google.com/maps/place/?q=place_id:${placeId || "ChIJsQKhaXwlGJYRw_eFoWzOXyA"}`;
 
@@ -239,80 +264,85 @@ export function GoogleReviews({
           </div>
         </div>
 
-        {/* Listado de Reseñas */}
-        {loading && reviews.length === 0 ? (
+        {/* Listado de Reseñas Aleatorias con Texto Real */}
+        {loading && displayedReviews.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 space-y-2">
             <div className="w-6 h-6 border-2 border-[#ffd025] border-t-transparent rounded-full animate-spin" />
             <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Conectando con Google Maps...</span>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {reviews.slice(0, 4).map((review, idx) => (
-              <div
-                key={idx}
-                className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col justify-between hover:border-[#ffd025]/20 hover:bg-white/[0.04] transition-all group shadow-lg"
-              >
-                <div>
-                  {/* Autor y Fecha */}
-                  <div className="flex items-center gap-3 mb-3">
-                    {review.authorPhotoUrl ? (
-                      <img
-                        src={review.authorPhotoUrl}
-                        alt={review.authorName}
-                        className="w-9 h-9 rounded-full object-cover border border-white/15 bg-black"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120";
-                        }}
-                      />
-                    ) : (
-                      <div className="w-9 h-9 rounded-full bg-[#ffd025] text-black flex items-center justify-center text-xs font-black border border-white/15">
-                        {review.authorName.charAt(0).toUpperCase()}
+            {displayedReviews.map((review, idx) => {
+              const hasPhoto = Boolean(review.authorPhotoUrl && !failedImageAuthors[review.authorName]);
+              const initialLetter = (review.authorName.trim().charAt(0) || "C").toUpperCase();
+
+              return (
+                <div
+                  key={`${review.authorName}-${idx}`}
+                  className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col justify-between hover:border-[#ffd025]/20 hover:bg-white/[0.04] transition-all group shadow-lg"
+                >
+                  <div>
+                    {/* Autor y Fecha */}
+                    <div className="flex items-center gap-3 mb-3">
+                      {hasPhoto ? (
+                        <img
+                          src={review.authorPhotoUrl}
+                          alt={review.authorName}
+                          className="w-9 h-9 rounded-full object-cover border border-white/15 bg-black"
+                          onError={() => {
+                            setFailedImageAuthors((prev) => ({ ...prev, [review.authorName]: true }));
+                          }}
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-500/20 to-[#ffd025]/25 text-[#ffd025] flex items-center justify-center text-xs font-black border border-[#ffd025]/30 shrink-0">
+                          {initialLetter}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <h4 className="text-xs font-bold text-white truncate leading-tight group-hover:text-[#ffd025] transition-colors">
+                          {review.authorName}
+                        </h4>
+                        <span className="text-[10px] text-gray-400 font-medium block mt-0.5">
+                          {review.relativeTimeDescription}
+                        </span>
                       </div>
-                    )}
-                    <div className="min-w-0">
-                      <h4 className="text-xs font-bold text-white truncate leading-tight group-hover:text-[#ffd025] transition-colors">
-                        {review.authorName}
-                      </h4>
-                      <span className="text-[10px] text-gray-400 font-medium block mt-0.5">
-                        {review.relativeTimeDescription}
-                      </span>
                     </div>
-                  </div>
 
-                  {/* Estrellas */}
-                  <div className="flex items-center gap-0.5 text-[#ffd025] mb-2.5">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        size={11}
-                        fill={i < review.rating ? "#ffd025" : "none"}
-                        strokeWidth={i < review.rating ? 0 : 2}
-                      />
-                    ))}
-                  </div>
+                    {/* Estrellas */}
+                    <div className="flex items-center gap-0.5 text-[#ffd025] mb-2.5">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          size={11}
+                          fill={i < review.rating ? "#ffd025" : "none"}
+                          strokeWidth={i < review.rating ? 0 : 2}
+                        />
+                      ))}
+                    </div>
 
-                  {/* Texto */}
-                  <p className="text-[11.5px] sm:text-xs text-gray-300 leading-relaxed font-normal line-clamp-4 italic">
-                    "{review.text}"
-                  </p>
+                    {/* Texto Real de la Reseña */}
+                    <p className="text-[11.5px] sm:text-xs text-gray-300 leading-relaxed font-normal line-clamp-4 italic">
+                      "{review.text}"
+                    </p>
+                  </div>
+                  
+                  {/* Google Maps Link / Logo */}
+                  <div className="mt-4 pt-2.5 border-t border-white/5 flex items-center justify-between text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                    <span className="flex items-center gap-1 truncate max-w-[140px]">
+                      <MapPin size={11} className="text-red-500 shrink-0" /> {placeName}
+                    </span>
+                    <a
+                      href={googleMapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-0.5 text-[#ffd025]/70 hover:text-[#ffd025] transition-colors shrink-0"
+                    >
+                      Google Maps <ExternalLink size={10} />
+                    </a>
+                  </div>
                 </div>
-                
-                {/* Google Maps Link / Logo */}
-                <div className="mt-4 pt-2.5 border-t border-white/5 flex items-center justify-between text-[10px] text-gray-500 font-bold uppercase tracking-wider">
-                  <span className="flex items-center gap-1 truncate max-w-[140px]">
-                    <MapPin size={11} className="text-red-500 shrink-0" /> {placeName}
-                  </span>
-                  <a
-                    href={googleMapsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-0.5 text-[#ffd025]/70 hover:text-[#ffd025] transition-colors shrink-0"
-                  >
-                    Google Maps <ExternalLink size={10} />
-                  </a>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
