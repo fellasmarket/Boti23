@@ -8202,12 +8202,12 @@ export default function Storefront() {
                   {/* Collapsible Step-by-Step Product Wizard (Añadir / Editar) */}
                   {(() => {
                     const renderWizardBlock = (inlineProduct?: Product) => (
-                      <div className={`bg-[#12121e]/98 backdrop-blur-2xl rounded-3xl border-2 ${inlineProduct ? "border-[#ffd025] ring-4 ring-[#ffd025]/20 my-3" : "border-[#ffd025]/40"} p-5 sm:p-7 shadow-2xl shadow-black/90 space-y-5 animate-fade-in text-left`}>
-                        {/* Wizard Header */}
+                      <div className={`bg-[#12121e]/98 backdrop-blur-2xl rounded-3xl border-2 ${inlineProduct ? "border-[#ffd025] ring-4 ring-[#ffd025]/20 my-3" : "border-[#ffd025]/40"} p-5 sm:p-7 shadow-2xl shadow-black/90 space-y-6 animate-fade-in text-left`}>
+                        {/* Header */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
                           <div>
                             <div className="flex items-center gap-2 text-xs font-bold text-[#ffd025] uppercase tracking-wider mb-1">
-                              <Sparkles size={14} /> {inlineProduct ? "Editor de Producto (En Línea)" : "Asistente de Producto"}
+                              <Sparkles size={14} /> {inlineProduct ? "Editor de Producto (Todo en Una Pantalla)" : "Formulario de Producto"}
                             </div>
                             <h3 className="text-lg sm:text-xl font-black text-white uppercase">
                               {inlineProduct
@@ -8216,8 +8216,8 @@ export default function Storefront() {
                             </h3>
                             <p className="text-xs text-gray-400 mt-0.5">
                               {inlineProduct
-                                ? "Edita la información, sube fotos o cambia atributos directamente aquí sin moverte de la lista."
-                                : "Completa los 3 pasos guiados para publicar el nuevo producto en el catálogo."}
+                                ? "Todos los campos disponibles en una sola ventana para edición rápida y sin interrupciones."
+                                : "Ingresa los datos para publicar el nuevo producto inmediatamente en el catálogo."}
                             </p>
                           </div>
                           <button
@@ -8229,454 +8229,368 @@ export default function Storefront() {
                           </button>
                         </div>
 
-                        {/* Step Progress Indicators */}
-                        <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                          {[
-                            { step: 1, label: "1. Datos Básicos", desc: "Nombre, precio y pasillo" },
-                            { step: 2, label: "2. Multimedia & Variantes", desc: "Foto y opciones" },
-                            { step: 3, label: "3. Atributos & Extras", desc: "Oferta, seña y contingencia" },
-                          ].map((s) => {
-                            const isActive = productWizardStep === s.step;
-                            const isDone = productWizardStep > s.step;
-                            return (
-                              <button
-                                key={s.step}
-                                type="button"
-                                onClick={() => setProductWizardStep(s.step as any)}
-                                className={`p-3 sm:p-4 rounded-2xl border text-left transition-all ${
-                                  isActive
-                                    ? "bg-gradient-to-r from-[#ffd025]/20 to-[#ffd025]/5 border-[#ffd025] text-white shadow-lg shadow-[#ffd025]/10"
-                                    : isDone
-                                    ? "bg-white/5 border-emerald-500/30 text-emerald-400 hover:bg-white/10"
-                                    : "bg-white/[0.02] border-white/5 text-gray-500 hover:border-white/10"
-                                }`}
-                              >
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span
-                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${
-                                      isActive
-                                        ? "bg-[#ffd025] text-[#141414]"
-                                        : isDone
-                                        ? "bg-emerald-500 text-white"
-                                        : "bg-white/10 text-gray-400"
-                                    }`}
-                                  >
-                                    {isDone ? "✓" : s.step}
-                                  </span>
-                                  <span className="font-bold text-xs sm:text-sm truncate">{s.label}</span>
-                                </div>
-                                <p className="text-[10px] text-gray-400 truncate hidden sm:block">{s.desc}</p>
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        {/* Wizard Form */}
+                        {/* Formulario Todo en Una Sola Pantalla */}
                         <form onSubmit={saveProduct} className="space-y-6">
-                          {/* ── PASO 1: Datos Básicos ── */}
-                          {productWizardStep === 1 && (
-                            <div className="space-y-4 animate-fade-in">
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="md:col-span-2 space-y-1.5">
-                                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
-                                    Nombre del Producto *
-                                  </label>
-                                  <input
-                                    required
-                                    type="text"
-                                    placeholder="Ej: Cerveza Austral Calafate 6x330ml..."
-                                    value={formState.name}
-                                    onChange={(e) => setFormState({ ...formState, name: e.target.value })}
-                                    className="w-full bg-[#181826] border border-white/10 rounded-xl p-3.5 text-white text-sm focus:border-[#ffd025] focus:outline-none placeholder-gray-500"
-                                  />
-                                </div>
-                                <div className="space-y-1.5">
-                                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
-                                    Precio de Venta ($ CLP) *
-                                  </label>
-                                  <input
-                                    required
-                                    type="number"
-                                    min="0"
-                                    placeholder="Ej: 12990"
-                                    value={formState.price}
-                                    onChange={(e) => setFormState({ ...formState, price: e.target.value })}
-                                    className="w-full bg-[#181826] border border-white/10 rounded-xl p-3.5 text-[#ffd025] font-black text-sm focus:border-[#ffd025] focus:outline-none"
-                                  />
-                                </div>
+                          {/* 1. INFORMACIÓN PRINCIPAL */}
+                          <div className="p-4 sm:p-5 rounded-2xl bg-[#181826] border border-white/10 space-y-4">
+                            <h4 className="text-xs font-black uppercase tracking-wider text-[#ffd025] flex items-center gap-1.5 pb-2 border-b border-white/5">
+                              📌 1. Información Principal
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="md:col-span-2 space-y-1.5">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
+                                  Nombre del Producto *
+                                </label>
+                                <input
+                                  required
+                                  type="text"
+                                  placeholder="Ej: Cerveza Austral Calafate 6x330ml..."
+                                  value={formState.name}
+                                  onChange={(e) => setFormState({ ...formState, name: e.target.value })}
+                                  className="w-full bg-[#12121d] border border-white/10 rounded-xl p-3 text-white text-sm focus:border-[#ffd025] focus:outline-none placeholder-gray-500"
+                                />
                               </div>
-
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="space-y-1.5">
-                                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
-                                    Categoría Principal *
-                                  </label>
-                                  <select
-                                    required
-                                    value={formState.category}
-                                    onChange={(e) => setFormState({ ...formState, category: e.target.value })}
-                                    className="w-full bg-[#181826] border border-white/10 rounded-xl p-3.5 text-white text-xs sm:text-sm focus:border-[#ffd025] focus:outline-none"
-                                  >
-                                    <option value="">Seleccionar Categoría...</option>
-                                    {categories.map((c) => (
-                                      <option key={c} value={c}>
-                                        {c}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-
-                                <div className="space-y-1.5">
-                                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
-                                    Pasillo Separador *
-                                  </label>
-                                  <select
-                                    required
-                                    value={formState.aisle}
-                                    onChange={(e) => setFormState({ ...formState, aisle: e.target.value })}
-                                    className="w-full bg-[#181826] border border-white/10 rounded-xl p-3.5 text-white text-xs sm:text-sm focus:border-[#ffd025] focus:outline-none"
-                                  >
-                                    <option value="">Seleccionar Pasillo...</option>
-                                    {aisles.map((a) => (
-                                      <option key={a} value={a}>
-                                        {a}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-
-                                <div className="space-y-1.5">
-                                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
-                                    Subcategoría / Tag (Opcional)
-                                  </label>
-                                  <select
-                                    value={formState.subcategory}
-                                    onChange={(e) => setFormState({ ...formState, subcategory: e.target.value })}
-                                    className="w-full bg-[#181826] border border-white/10 rounded-xl p-3.5 text-white text-xs sm:text-sm focus:border-[#ffd025] focus:outline-none"
-                                  >
-                                    <option value="">Sin subcategoría...</option>
-                                    {subcategories.map((s) => (
-                                      <option key={s} value={s}>
-                                        {s}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                              </div>
-
-                              <div className="flex justify-end pt-4">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (!formState.name.trim() || !formState.price) {
-                                      showToast("Por favor ingresa nombre y precio");
-                                      return;
-                                    }
-                                    setProductWizardStep(2);
-                                  }}
-                                  className="px-6 py-3.5 bg-gradient-to-r from-[#ffd025] to-[#e6b800] text-[#141414] font-black uppercase text-xs rounded-xl shadow-lg hover:scale-[1.01] transition-all flex items-center gap-2 cursor-pointer"
-                                >
-                                  Siguiente: Multimedia & Variantes ➔
-                                </button>
+                              <div className="space-y-1.5">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
+                                  Precio de Venta ($ CLP) *
+                                </label>
+                                <input
+                                  required
+                                  type="number"
+                                  min="0"
+                                  placeholder="Ej: 12990"
+                                  value={formState.price}
+                                  onChange={(e) => setFormState({ ...formState, price: e.target.value })}
+                                  className="w-full bg-[#12121d] border border-white/10 rounded-xl p-3 text-[#ffd025] font-black text-sm focus:border-[#ffd025] focus:outline-none"
+                                />
                               </div>
                             </div>
-                          )}
 
-                          {/* ── PASO 2: Multimedia & Variantes ── */}
-                          {productWizardStep === 2 && (
-                            <div className="space-y-5 animate-fade-in">
-                              <div className="p-4 sm:p-5 rounded-2xl bg-[#181826] border border-white/5 space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                              <div className="space-y-1.5">
                                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
-                                  Imagen del Producto
+                                  Categoría Principal *
                                 </label>
-                                <div className="flex flex-col sm:flex-row gap-4 items-center">
-                                  <div className="relative w-24 h-24 rounded-2xl bg-[#12121d] border border-white/10 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
-                                    {formState.image ? (
-                                      <img
-                                        src={formState.image}
-                                        alt="Preview"
-                                        className="w-full h-full object-contain p-1"
-                                        onError={(e) => {
-                                          (e.currentTarget as HTMLImageElement).style.display = "none";
-                                        }}
-                                      />
-                                    ) : (
-                                      <div className="text-center p-2 text-gray-500">
-                                        <Package size={24} className="mx-auto mb-1 opacity-50" />
-                                        <span className="text-[9px] uppercase font-bold">Sin foto</span>
-                                      </div>
-                                    )}
-                                    {formState.image && (
-                                      <span
-                                        className={`absolute bottom-1 right-1 p-1 rounded-full text-white text-[9px] shadow ${
-                                          formState.image.includes("/storage/objects/") ? "bg-emerald-600" : "bg-blue-600"
-                                        }`}
-                                      >
-                                        {formState.image.includes("/storage/objects/") ? <HardDriveUpload size={10} /> : <Link2 size={10} />}
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  <div className="flex-1 w-full space-y-2">
-                                    <div className="flex gap-2">
-                                      <input
-                                        type="text"
-                                        placeholder="Pegar link de imagen externa (https://...)"
-                                        value={formState.image.includes("/storage/objects/") ? "" : formState.image}
-                                        onChange={(e) => setFormState({ ...formState, image: e.target.value })}
-                                        onBlur={(e) =>
-                                          resolveImageUrl(e.target.value, (resolved) =>
-                                            setFormState((prev) => ({ ...prev, image: resolved })),
-                                          )
-                                        }
-                                        className="flex-1 bg-[#12121d] border border-white/10 rounded-xl p-3 text-white text-xs focus:border-[#ffd025] focus:outline-none placeholder-gray-500"
-                                      />
-                                      <label className="cursor-pointer px-4 py-3 bg-[#ffd025]/10 text-[#ffd025] hover:bg-[#ffd025] hover:text-[#141414] rounded-xl text-xs font-black text-center transition flex items-center gap-1.5 border border-[#ffd025]/20 shrink-0">
-                                        <Upload size={14} /> Subir Foto
-                                        <input
-                                          type="file"
-                                          accept="image/*"
-                                          className="hidden"
-                                          onChange={(e) =>
-                                            handleImageUpload(e, (url) => setFormState({ ...formState, image: url }))
-                                          }
-                                        />
-                                      </label>
-                                      {formState.image && (
-                                        <button
-                                          type="button"
-                                          title="Eliminar foto"
-                                          onClick={() => {
-                                            if (formState.image.includes("/storage/objects/")) {
-                                              handleDeleteStorageImage(formState.image, () =>
-                                                setFormState({ ...formState, image: "" }),
-                                              );
-                                            } else {
-                                              setFormState({ ...formState, image: "" });
-                                            }
-                                          }}
-                                          className="px-3 py-3 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-xl text-xs font-black transition shrink-0 cursor-pointer"
-                                        >
-                                          <Trash2 size={14} />
-                                        </button>
-                                      )}
-                                    </div>
-                                    <p className="text-[11px] text-gray-500">
-                                      Formatos recomendados: JPG, PNG o WebP. Se comprime automáticamente.
-                                    </p>
-                                  </div>
-                                </div>
+                                <select
+                                  required
+                                  value={formState.category}
+                                  onChange={(e) => setFormState({ ...formState, category: e.target.value })}
+                                  className="w-full bg-[#12121d] border border-white/10 rounded-xl p-3 text-white text-xs sm:text-sm focus:border-[#ffd025] focus:outline-none"
+                                >
+                                  <option value="">Seleccionar Categoría...</option>
+                                  {categories.map((c) => (
+                                    <option key={c} value={c}>
+                                      {c}
+                                    </option>
+                                  ))}
+                                </select>
                               </div>
 
-                              <div className="p-4 sm:p-5 rounded-2xl bg-[#181826] border border-white/5 space-y-3">
+                              <div className="space-y-1.5">
                                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
-                                  Opciones y Presentaciones (Opcional)
+                                  Pasillo Separador *
                                 </label>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <select
+                                  required
+                                  value={formState.aisle}
+                                  onChange={(e) => setFormState({ ...formState, aisle: e.target.value })}
+                                  className="w-full bg-[#12121d] border border-white/10 rounded-xl p-3 text-white text-xs sm:text-sm focus:border-[#ffd025] focus:outline-none"
+                                >
+                                  <option value="">Seleccionar Pasillo...</option>
+                                  {aisles.map((a) => (
+                                    <option key={a} value={a}>
+                                      {a}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
+                                  Subcategoría / Tag (Opcional)
+                                </label>
+                                <select
+                                  value={formState.subcategory}
+                                  onChange={(e) => setFormState({ ...formState, subcategory: e.target.value })}
+                                  className="w-full bg-[#12121d] border border-white/10 rounded-xl p-3 text-white text-xs sm:text-sm focus:border-[#ffd025] focus:outline-none"
+                                >
+                                  <option value="">Sin subcategoría...</option>
+                                  {subcategories.map((s) => (
+                                    <option key={s} value={s}>
+                                      {s}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 2. MULTIMEDIA Y VARIANTES */}
+                          <div className="p-4 sm:p-5 rounded-2xl bg-[#181826] border border-white/10 space-y-4">
+                            <h4 className="text-xs font-black uppercase tracking-wider text-[#ffd025] flex items-center gap-1.5 pb-2 border-b border-white/5">
+                              🖼️ 2. Imagen y Variantes
+                            </h4>
+
+                            <div className="flex flex-col sm:flex-row gap-4 items-center">
+                              <div className="relative w-20 h-20 rounded-2xl bg-[#12121d] border border-white/10 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+                                {formState.image ? (
+                                  <img
+                                    src={formState.image}
+                                    alt="Preview"
+                                    className="w-full h-full object-contain p-1"
+                                    onError={(e) => {
+                                      (e.currentTarget as HTMLImageElement).style.display = "none";
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="text-center p-2 text-gray-500">
+                                    <Package size={22} className="mx-auto mb-0.5 opacity-50" />
+                                    <span className="text-[8px] uppercase font-bold">Sin foto</span>
+                                  </div>
+                                )}
+                                {formState.image && (
+                                  <span
+                                    className={`absolute bottom-1 right-1 p-1 rounded-full text-white text-[9px] shadow ${
+                                      formState.image.includes("/storage/objects/") ? "bg-emerald-600" : "bg-blue-600"
+                                    }`}
+                                  >
+                                    {formState.image.includes("/storage/objects/") ? <HardDriveUpload size={10} /> : <Link2 size={10} />}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex-1 w-full space-y-2">
+                                <div className="flex gap-2">
                                   <input
                                     type="text"
-                                    placeholder="Título del selector (ej: Sabor, Tamaño, Pack)"
-                                    value={formState.optionsTitle}
-                                    onChange={(e) => setFormState({ ...formState, optionsTitle: e.target.value })}
-                                    className="bg-[#12121d] border border-white/10 rounded-xl p-3 text-white text-xs focus:border-[#ffd025] focus:outline-none"
+                                    placeholder="Pegar link de imagen externa (https://...)"
+                                    value={formState.image.includes("/storage/objects/") ? "" : formState.image}
+                                    onChange={(e) => setFormState({ ...formState, image: e.target.value })}
+                                    onBlur={(e) =>
+                                      resolveImageUrl(e.target.value, (resolved) =>
+                                        setFormState((prev) => ({ ...prev, image: resolved })),
+                                      )
+                                    }
+                                    className="flex-1 bg-[#12121d] border border-white/10 rounded-xl p-3 text-white text-xs focus:border-[#ffd025] focus:outline-none placeholder-gray-500"
                                   />
-                                  <input
-                                    type="text"
-                                    placeholder="Opciones separadas por coma (ej: Lata 350ml, Botella 1L, Six Pack)"
-                                    value={formState.optionsString}
-                                    onChange={(e) => setFormState({ ...formState, optionsString: e.target.value })}
-                                    className="bg-[#12121d] border border-white/10 rounded-xl p-3 text-white text-xs focus:border-[#ffd025] focus:outline-none"
-                                  />
+                                  <label className="cursor-pointer px-4 py-3 bg-[#ffd025]/10 text-[#ffd025] hover:bg-[#ffd025] hover:text-[#141414] rounded-xl text-xs font-black text-center transition flex items-center gap-1.5 border border-[#ffd025]/20 shrink-0">
+                                    <Upload size={14} /> Subir Foto
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={(e) =>
+                                        handleImageUpload(e, (url) => setFormState({ ...formState, image: url }))
+                                      }
+                                    />
+                                  </label>
+                                  {formState.image && (
+                                    <button
+                                      type="button"
+                                      title="Eliminar foto"
+                                      onClick={() => {
+                                        if (formState.image.includes("/storage/objects/")) {
+                                          handleDeleteStorageImage(formState.image, () =>
+                                            setFormState({ ...formState, image: "" }),
+                                          );
+                                        } else {
+                                          setFormState({ ...formState, image: "" });
+                                        }
+                                      }}
+                                      className="px-3 py-3 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-xl text-xs font-black transition shrink-0 cursor-pointer"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  )}
                                 </div>
                                 <p className="text-[11px] text-gray-500">
-                                  Los clientes podrán elegir entre estas opciones antes de añadir el producto al carrito.
+                                  JPG, PNG o WebP. Se comprime automáticamente.
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="pt-2 border-t border-white/5 space-y-2">
+                              <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
+                                Opciones / Presentaciones (Opcional)
+                              </label>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <input
+                                  type="text"
+                                  placeholder="Título selector (ej: Sabor, Tamaño, Pack)"
+                                  value={formState.optionsTitle}
+                                  onChange={(e) => setFormState({ ...formState, optionsTitle: e.target.value })}
+                                  className="bg-[#12121d] border border-white/10 rounded-xl p-3 text-white text-xs focus:border-[#ffd025] focus:outline-none"
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Opciones separadas por coma (ej: Lata 350ml, Botella 1L)"
+                                  value={formState.optionsString}
+                                  onChange={(e) => setFormState({ ...formState, optionsString: e.target.value })}
+                                  className="bg-[#12121d] border border-white/10 rounded-xl p-3 text-white text-xs focus:border-[#ffd025] focus:outline-none"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 3. ATRIBUTOS Y EXTRAS */}
+                          <div className="p-4 sm:p-5 rounded-2xl bg-[#181826] border border-white/10 space-y-4">
+                            <h4 className="text-xs font-black uppercase tracking-wider text-[#ffd025] flex items-center gap-1.5 pb-2 border-b border-white/5">
+                              ⚡ 3. Atributos Especiales & Extras
+                            </h4>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              {/* Oferta Toggle */}
+                              <div
+                                onClick={() => setFormState({ ...formState, oferta: !formState.oferta })}
+                                className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
+                                  formState.oferta
+                                    ? "bg-gradient-to-r from-pink-600/25 to-yellow-500/15 border-pink-500 text-white"
+                                    : "bg-[#12121d] border-white/10 text-gray-400 hover:border-white/20"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <span className="font-black text-xs sm:text-sm text-white flex items-center gap-1.5">
+                                    🏷️ Producto en Oferta
+                                  </span>
+                                  <span
+                                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                      formState.oferta ? "bg-pink-500 border-pink-500 text-white" : "border-gray-600"
+                                    }`}
+                                  >
+                                    {formState.oferta && <span className="text-[10px]">✓</span>}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-gray-400">
+                                  Destaca este producto con etiqueta de oferta.
                                 </p>
                               </div>
 
-                              <div className="flex justify-between pt-4">
-                                <button
-                                  type="button"
-                                  onClick={() => setProductWizardStep(1)}
-                                  className="px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-bold text-xs uppercase transition-colors cursor-pointer"
-                                >
-                                  ⬅ Volver al Paso 1
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setProductWizardStep(3)}
-                                  className="px-6 py-3.5 bg-gradient-to-r from-[#ffd025] to-[#e6b800] text-[#141414] font-black uppercase text-xs rounded-xl shadow-lg hover:scale-[1.01] transition-all flex items-center gap-2 cursor-pointer"
-                                >
-                                  Siguiente: Atributos Especiales ➔
-                                </button>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* ── PASO 3: Atributos Especiales & Extras ── */}
-                          {productWizardStep === 3 && (
-                            <div className="space-y-4 animate-fade-in">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {/* Oferta Toggle */}
-                                <div
-                                  onClick={() => setFormState({ ...formState, oferta: !formState.oferta })}
-                                  className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                                    formState.oferta
-                                      ? "bg-gradient-to-r from-pink-600/25 to-yellow-500/15 border-pink-500 text-white"
-                                      : "bg-[#181826] border-white/10 text-gray-400 hover:border-white/20"
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between mb-1">
-                                    <span className="font-black text-sm text-white flex items-center gap-1.5">
-                                      🏷️ Producto en Oferta
-                                    </span>
-                                    <span
-                                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                        formState.oferta ? "bg-pink-500 border-pink-500 text-white" : "border-gray-600"
-                                      }`}
-                                    >
-                                      {formState.oferta && <span className="text-[10px]">✓</span>}
-                                    </span>
-                                  </div>
-                                  <p className="text-[11px] text-gray-400">
-                                    Destaca este producto con la etiqueta roja de oferta en el catálogo público.
-                                  </p>
+                              {/* Contingencia Toggle */}
+                              <div
+                                onClick={() =>
+                                  setFormState({ ...formState, contingencyEnabled: !formState.contingencyEnabled })
+                                }
+                                className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
+                                  formState.contingencyEnabled
+                                    ? "bg-gradient-to-r from-amber-600/25 to-orange-500/15 border-amber-500 text-white"
+                                    : "bg-[#12121d] border-white/10 text-gray-400 hover:border-white/20"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <span className="font-black text-xs sm:text-sm text-white flex items-center gap-1.5">
+                                    ⚡ Catálogo de Contingencia
+                                  </span>
+                                  <span
+                                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                      formState.contingencyEnabled ? "bg-amber-500 border-amber-500 text-white" : "border-gray-600"
+                                    }`}
+                                  >
+                                    {formState.contingencyEnabled && <span className="text-[10px]">✓</span>}
+                                  </span>
                                 </div>
+                                <p className="text-[10px] text-gray-400">
+                                  Visibilidad en Modo Contingencia.
+                                </p>
+                              </div>
 
-                                {/* Contingencia Toggle */}
+                              {/* Retornable / Seña Toggle */}
+                              <div className="p-3.5 rounded-2xl bg-[#12121d] border border-white/10 space-y-2">
                                 <div
                                   onClick={() =>
-                                    setFormState({ ...formState, contingencyEnabled: !formState.contingencyEnabled })
+                                    setFormState({ ...formState, depositoEnabled: !formState.depositoEnabled })
                                   }
-                                  className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                                    formState.contingencyEnabled
-                                      ? "bg-gradient-to-r from-amber-600/25 to-orange-500/15 border-amber-500 text-white"
-                                      : "bg-[#181826] border-white/10 text-gray-400 hover:border-white/20"
-                                  }`}
+                                  className="flex items-center justify-between cursor-pointer"
                                 >
-                                  <div className="flex items-center justify-between mb-1">
-                                    <span className="font-black text-sm text-white flex items-center gap-1.5">
-                                      ⚡ Catálogo de Contingencia
+                                  <div>
+                                    <span className="font-black text-xs sm:text-sm text-white flex items-center gap-1.5">
+                                      🍾 Envase Retornable (Seña)
                                     </span>
-                                    <span
-                                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                        formState.contingencyEnabled ? "bg-amber-500 border-amber-500 text-white" : "border-gray-600"
-                                      }`}
-                                    >
-                                      {formState.contingencyEnabled && <span className="text-[10px]">✓</span>}
-                                    </span>
+                                    <p className="text-[10px] text-gray-400">Garantía por envase.</p>
                                   </div>
-                                  <p className="text-[11px] text-gray-400">
-                                    Permite que este producto se venda cuando se activa el Modo Contingencia de 30 items.
-                                  </p>
-                                </div>
-
-                                {/* Retornable / Seña Toggle */}
-                                <div className="p-4 rounded-2xl bg-[#181826] border border-white/10 space-y-2.5">
-                                  <div
-                                    onClick={() =>
-                                      setFormState({ ...formState, depositoEnabled: !formState.depositoEnabled })
-                                    }
-                                    className="flex items-center justify-between cursor-pointer"
+                                  <span
+                                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                      formState.depositoEnabled ? "bg-cyan-500 border-cyan-500 text-white" : "border-gray-600"
+                                    }`}
                                   >
-                                    <div>
-                                      <span className="font-black text-sm text-white flex items-center gap-1.5">
-                                        🍾 Envase Retornable (Seña)
-                                      </span>
-                                      <p className="text-[11px] text-gray-400">Aplica cobro de garantía por envase.</p>
-                                    </div>
-                                    <span
-                                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                        formState.depositoEnabled ? "bg-cyan-500 border-cyan-500 text-white" : "border-gray-600"
-                                      }`}
-                                    >
-                                      {formState.depositoEnabled && <span className="text-[10px]">✓</span>}
-                                    </span>
-                                  </div>
-                                  {formState.depositoEnabled && (
-                                    <div className="flex items-center gap-2 pt-2 border-t border-white/5 animate-fade-in">
-                                      <label className="text-xs font-bold text-cyan-400">Valor Seña ($):</label>
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        value={formState.depositoAmount}
-                                        onChange={(e) => setFormState({ ...formState, depositoAmount: e.target.value })}
-                                        className="flex-1 bg-[#12121d] border border-cyan-500/50 rounded-lg px-2.5 py-1 text-white text-xs focus:border-cyan-400 focus:outline-none"
-                                        placeholder="500"
-                                      />
-                                    </div>
-                                  )}
+                                    {formState.depositoEnabled && <span className="text-[10px]">✓</span>}
+                                  </span>
                                 </div>
-
-                                {/* Transferencia Fee Toggle */}
-                                <div className="p-4 rounded-2xl bg-[#181826] border border-white/10 space-y-2.5">
-                                  <div
-                                    onClick={() =>
-                                      setFormState({
-                                        ...formState,
-                                        transferenciaEnabled: !formState.transferenciaEnabled,
-                                      })
-                                    }
-                                    className="flex items-center justify-between cursor-pointer"
-                                  >
-                                    <div>
-                                      <span className="font-black text-sm text-white flex items-center gap-1.5">
-                                        💳 Cargo Extra Transferencia
-                                      </span>
-                                      <p className="text-[11px] text-gray-400">Aplica recargo adicional de pago.</p>
-                                    </div>
-                                    <span
-                                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                        formState.transferenciaEnabled ? "bg-blue-500 border-blue-500 text-white" : "border-gray-600"
-                                      }`}
-                                    >
-                                      {formState.transferenciaEnabled && <span className="text-[10px]">✓</span>}
-                                    </span>
+                                {formState.depositoEnabled && (
+                                  <div className="flex items-center gap-2 pt-2 border-t border-white/5 animate-fade-in">
+                                    <label className="text-xs font-bold text-cyan-400">Valor Seña ($):</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={formState.depositoAmount}
+                                      onChange={(e) => setFormState({ ...formState, depositoAmount: e.target.value })}
+                                      className="flex-1 bg-[#181826] border border-cyan-500/50 rounded-lg px-2.5 py-1 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                                      placeholder="500"
+                                    />
                                   </div>
-                                  {formState.transferenciaEnabled && (
-                                    <div className="flex items-center gap-2 pt-2 border-t border-white/5 animate-fade-in">
-                                      <label className="text-xs font-bold text-blue-400">Recargo ($):</label>
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        value={formState.transferenciaAmount}
-                                        onChange={(e) =>
-                                          setFormState({ ...formState, transferenciaAmount: e.target.value })
-                                        }
-                                        className="flex-1 bg-[#12121d] border border-blue-500/50 rounded-lg px-2.5 py-1 text-white text-xs focus:border-blue-400 focus:outline-none"
-                                        placeholder="0"
-                                      />
-                                    </div>
-                                  )}
-                                </div>
+                                )}
                               </div>
 
-                              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 border-t border-white/10">
-                                <button
-                                  type="button"
-                                  onClick={() => setProductWizardStep(2)}
-                                  className="w-full sm:w-auto px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-bold text-xs uppercase transition-colors cursor-pointer"
+                              {/* Transferencia Fee Toggle */}
+                              <div className="p-3.5 rounded-2xl bg-[#12121d] border border-white/10 space-y-2">
+                                <div
+                                  onClick={() =>
+                                    setFormState({
+                                      ...formState,
+                                      transferenciaEnabled: !formState.transferenciaEnabled,
+                                    })
+                                  }
+                                  className="flex items-center justify-between cursor-pointer"
                                 >
-                                  ⬅ Volver al Paso 2
-                                </button>
-                                <div className="flex items-center gap-3 w-full sm:w-auto">
-                                  <button
-                                    type="button"
-                                    onClick={cancelEditing}
-                                    className="flex-1 sm:flex-initial px-5 py-3 rounded-xl border border-white/10 text-gray-400 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+                                  <div>
+                                    <span className="font-black text-xs sm:text-sm text-white flex items-center gap-1.5">
+                                      💳 Cargo Extra Transferencia
+                                    </span>
+                                    <p className="text-[10px] text-gray-400">Recargo por pago.</p>
+                                  </div>
+                                  <span
+                                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                      formState.transferenciaEnabled ? "bg-blue-500 border-blue-500 text-white" : "border-gray-600"
+                                    }`}
                                   >
-                                    Plegar
-                                  </button>
-                                  <button
-                                    type="submit"
-                                    className="flex-1 sm:flex-initial px-8 py-3.5 bg-gradient-to-r from-[#ffd025] via-[#ffda47] to-[#e6b800] text-[#0a0a0f] rounded-xl font-black uppercase text-xs tracking-wider hover:scale-[1.01] active:scale-[0.99] transition-all shadow-xl shadow-[#ffd025]/20 flex items-center justify-center gap-2 cursor-pointer"
-                                  >
-                                    <CheckCircle size={16} />
-                                    {editingProduct !== null ? "Guardar Cambios del Producto" : "Crear y Publicar Producto"}
-                                  </button>
+                                    {formState.transferenciaEnabled && <span className="text-[10px]">✓</span>}
+                                  </span>
                                 </div>
+                                {formState.transferenciaEnabled && (
+                                  <div className="flex items-center gap-2 pt-2 border-t border-white/5 animate-fade-in">
+                                    <label className="text-xs font-bold text-blue-400">Recargo ($):</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={formState.transferenciaAmount}
+                                      onChange={(e) =>
+                                        setFormState({ ...formState, transferenciaAmount: e.target.value })
+                                      }
+                                      className="flex-1 bg-[#181826] border border-blue-500/50 rounded-lg px-2.5 py-1 text-white text-xs focus:border-blue-400 focus:outline-none"
+                                      placeholder="0"
+                                    />
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          )}
+                          </div>
+
+                          {/* BOTONES DE ACCIÓN UNIFICADOS */}
+                          <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-white/10">
+                            <button
+                              type="button"
+                              onClick={cancelEditing}
+                              className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-white/10 text-gray-300 hover:text-white hover:bg-white/5 text-xs font-bold transition-colors cursor-pointer"
+                            >
+                              Plegar / Cancelar
+                            </button>
+                            <button
+                              type="submit"
+                              className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-[#ffd025] via-[#ffda47] to-[#e6b800] text-[#0a0a0f] rounded-xl font-black uppercase text-xs tracking-wider hover:scale-[1.01] active:scale-[0.99] transition-all shadow-xl shadow-[#ffd025]/20 flex items-center justify-center gap-2 cursor-pointer"
+                            >
+                              <CheckCircle size={16} />
+                              {inlineProduct ? "Guardar Cambios del Producto" : "Crear y Publicar Producto"}
+                            </button>
+                          </div>
                         </form>
                       </div>
                     );
