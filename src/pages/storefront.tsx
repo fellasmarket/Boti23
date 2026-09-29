@@ -3,6 +3,7 @@ import {
   useMemo,
   useEffect,
   useRef,
+  Fragment,
   FormEvent,
   ChangeEvent,
   DragEvent,
@@ -1044,12 +1045,15 @@ export default function Storefront() {
         .map((id) => baseProducts.find((p) => p.id === id && !p.hidden))
         .filter((p): p is Product => Boolean(p));
       if (selected.length >= 6) return selected.slice(0, 6);
-      const remainder = filteredProducts.filter(
+      const remainder = (filteredProducts.length > 0 ? filteredProducts : baseProducts).filter(
         (p) => !p.hidden && !selected.some((s) => s.id === p.id)
       );
-      return [...selected, ...remainder].slice(0, 6);
+      const combined = [...selected, ...remainder];
+      if (combined.length > 0) return combined.slice(0, 6);
     }
-    return filteredProducts.slice(0, 6);
+    const nonHidden = baseProducts.filter((p) => !p.hidden);
+    if (filteredProducts.length > 0) return filteredProducts.slice(0, 6);
+    return nonHidden.slice(0, 6);
   }, [baseProducts, filteredProducts, settings.homeCollectionProductIds]);
 
   const opportunitiesCustomProducts = useMemo(() => {
@@ -1717,7 +1721,7 @@ export default function Storefront() {
   const startEditing = (product: Product) => {
     setEditingProduct(product.id);
     setProductWizardStep(1);
-    setShowAddProductModal(true);
+    setShowAddProductModal(false);
     setFormState({
       name: product.name,
       price: String(product.price),
@@ -3445,16 +3449,7 @@ export default function Storefront() {
                   </section>
                 );
 
-                const hasProductsOnDesktop = activeAisles.some((aisleName) => {
-                  const rawAisleProducts = groupedByAisle[aisleName] || [];
-                  const aisleProducts = settings.contingencyMode ? rawAisleProducts.slice(0, 6) : rawAisleProducts.slice(0, 10);
-                  return aisleProducts.length > 0;
-                });
-                const hasProductsOnMobile = homeCollectionProducts.length > 0;
-
-                const showCollections = isFiltered
-                  ? (hasProductsOnDesktop || hasProductsOnMobile)
-                  : homeCollectionProducts.length > 0;
+                const showCollections = baseProducts.length > 0 || homeCollectionProducts.length > 0;
 
                 const collectionsSection = !showCollections ? null : (
                   <section className="w-full mb-6 sm:mb-8">
@@ -3790,15 +3785,10 @@ export default function Storefront() {
                   </section>
                 );
 
-                return isFiltered ? (
+                return (
                   <>
                     {collectionsSection}
                     {recommendedSection}
-                  </>
-                ) : (
-                  <>
-                    {recommendedSection}
-                    {collectionsSection}
                   </>
                 );
               })()}
@@ -8210,483 +8200,491 @@ export default function Storefront() {
                   </div>
 
                   {/* Collapsible Step-by-Step Product Wizard (Añadir / Editar) */}
-                  {isWizardOpen && (
-                    <div className="bg-[#12121e]/95 backdrop-blur-2xl rounded-3xl border-2 border-[#ffd025]/40 p-6 sm:p-8 shadow-2xl shadow-black/90 space-y-6 animate-fade-in">
-                      {/* Wizard Header */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
-                        <div>
-                          <div className="flex items-center gap-2 text-xs font-bold text-[#ffd025] uppercase tracking-wider mb-1">
-                            <Sparkles size={14} /> Asistente de Producto
+                  {(() => {
+                    const renderWizardBlock = (inlineProduct?: Product) => (
+                      <div className={`bg-[#12121e]/98 backdrop-blur-2xl rounded-3xl border-2 ${inlineProduct ? "border-[#ffd025] ring-4 ring-[#ffd025]/20 my-3" : "border-[#ffd025]/40"} p-5 sm:p-7 shadow-2xl shadow-black/90 space-y-5 animate-fade-in text-left`}>
+                        {/* Wizard Header */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+                          <div>
+                            <div className="flex items-center gap-2 text-xs font-bold text-[#ffd025] uppercase tracking-wider mb-1">
+                              <Sparkles size={14} /> {inlineProduct ? "Editor de Producto (En Línea)" : "Asistente de Producto"}
+                            </div>
+                            <h3 className="text-lg sm:text-xl font-black text-white uppercase">
+                              {inlineProduct
+                                ? `✏️ Editando: ${formState.name || inlineProduct.name}`
+                                : "✨ Añadir Nuevo Producto"}
+                            </h3>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {inlineProduct
+                                ? "Edita la información, sube fotos o cambia atributos directamente aquí sin moverte de la lista."
+                                : "Completa los 3 pasos guiados para publicar el nuevo producto en el catálogo."}
+                            </p>
                           </div>
-                          <h3 className="text-xl sm:text-2xl font-black text-white uppercase">
-                            {editingProduct !== null
-                              ? `✏️ Editando: ${formState.name || "Producto"}`
-                              : "✨ Añadir Nuevo Producto"}
-                          </h3>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            Completa los 3 pasos guiados para publicar o actualizar el producto en el catálogo.
-                          </p>
+                          <button
+                            type="button"
+                            onClick={cancelEditing}
+                            className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-xs font-bold transition-colors flex items-center gap-2 border border-white/10 self-start sm:self-auto cursor-pointer"
+                          >
+                            <X size={15} /> Plegar / Cancelar
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={cancelEditing}
-                          className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-xs font-bold transition-colors flex items-center gap-2 border border-white/10 self-start sm:self-auto"
-                        >
-                          <X size={15} /> Plegar / Cancelar
-                        </button>
-                      </div>
 
-                      {/* Step Progress Indicators */}
-                      <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                        {[
-                          { step: 1, label: "1. Datos Básicos", desc: "Nombre, precio y pasillo" },
-                          { step: 2, label: "2. Multimedia & Variantes", desc: "Foto y opciones" },
-                          { step: 3, label: "3. Atributos & Extras", desc: "Oferta, seña y contingencia" },
-                        ].map((s) => {
-                          const isActive = productWizardStep === s.step;
-                          const isDone = productWizardStep > s.step;
-                          return (
-                            <button
-                              key={s.step}
-                              type="button"
-                              onClick={() => setProductWizardStep(s.step as any)}
-                              className={`p-3 sm:p-4 rounded-2xl border text-left transition-all ${
-                                isActive
-                                  ? "bg-gradient-to-r from-[#ffd025]/20 to-[#ffd025]/5 border-[#ffd025] text-white shadow-lg shadow-[#ffd025]/10"
-                                  : isDone
-                                  ? "bg-white/5 border-emerald-500/30 text-emerald-400 hover:bg-white/10"
-                                  : "bg-white/[0.02] border-white/5 text-gray-500 hover:border-white/10"
-                              }`}
-                            >
-                              <div className="flex items-center gap-2 mb-1">
-                                <span
-                                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${
-                                    isActive
-                                      ? "bg-[#ffd025] text-[#141414]"
-                                      : isDone
-                                      ? "bg-emerald-500 text-white"
-                                      : "bg-white/10 text-gray-400"
-                                  }`}
-                                >
-                                  {isDone ? "✓" : s.step}
-                                </span>
-                                <span className="font-bold text-xs sm:text-sm truncate">{s.label}</span>
-                              </div>
-                              <p className="text-[10px] text-gray-400 truncate hidden sm:block">{s.desc}</p>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Wizard Form */}
-                      <form onSubmit={saveProduct} className="space-y-6">
-                        {/* ── PASO 1: Datos Básicos ── */}
-                        {productWizardStep === 1 && (
-                          <div className="space-y-4 animate-fade-in">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div className="md:col-span-2 space-y-1.5">
-                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
-                                  Nombre del Producto *
-                                </label>
-                                <input
-                                  required
-                                  type="text"
-                                  placeholder="Ej: Cerveza Austral Calafate 6x330ml..."
-                                  value={formState.name}
-                                  onChange={(e) => setFormState({ ...formState, name: e.target.value })}
-                                  className="w-full bg-[#181826] border border-white/10 rounded-xl p-3.5 text-white text-sm focus:border-[#ffd025] focus:outline-none placeholder-gray-500"
-                                />
-                              </div>
-                              <div className="space-y-1.5">
-                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
-                                  Precio de Venta ($ CLP) *
-                                </label>
-                                <input
-                                  required
-                                  type="number"
-                                  min="0"
-                                  placeholder="Ej: 12990"
-                                  value={formState.price}
-                                  onChange={(e) => setFormState({ ...formState, price: e.target.value })}
-                                  className="w-full bg-[#181826] border border-white/10 rounded-xl p-3.5 text-[#ffd025] font-black text-sm focus:border-[#ffd025] focus:outline-none"
-                                />
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                              <div className="space-y-1.5">
-                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
-                                  Categoría Principal *
-                                </label>
-                                <select
-                                  required
-                                  value={formState.category}
-                                  onChange={(e) => setFormState({ ...formState, category: e.target.value })}
-                                  className="w-full bg-[#181826] border border-white/10 rounded-xl p-3.5 text-white text-xs sm:text-sm focus:border-[#ffd025] focus:outline-none"
-                                >
-                                  <option value="">Seleccionar Categoría...</option>
-                                  {categories.map((c) => (
-                                    <option key={c} value={c}>
-                                      {c}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-
-                              <div className="space-y-1.5">
-                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
-                                  Pasillo Separador *
-                                </label>
-                                <select
-                                  required
-                                  value={formState.aisle}
-                                  onChange={(e) => setFormState({ ...formState, aisle: e.target.value })}
-                                  className="w-full bg-[#181826] border border-white/10 rounded-xl p-3.5 text-white text-xs sm:text-sm focus:border-[#ffd025] focus:outline-none"
-                                >
-                                  <option value="">Seleccionar Pasillo...</option>
-                                  {aisles.map((a) => (
-                                    <option key={a} value={a}>
-                                      {a}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-
-                              <div className="space-y-1.5">
-                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
-                                  Subcategoría / Tag (Opcional)
-                                </label>
-                                <select
-                                  value={formState.subcategory}
-                                  onChange={(e) => setFormState({ ...formState, subcategory: e.target.value })}
-                                  className="w-full bg-[#181826] border border-white/10 rounded-xl p-3.5 text-white text-xs sm:text-sm focus:border-[#ffd025] focus:outline-none"
-                                >
-                                  <option value="">Sin subcategoría...</option>
-                                  {subcategories.map((s) => (
-                                    <option key={s} value={s}>
-                                      {s}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            </div>
-
-                            <div className="flex justify-end pt-4">
+                        {/* Step Progress Indicators */}
+                        <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                          {[
+                            { step: 1, label: "1. Datos Básicos", desc: "Nombre, precio y pasillo" },
+                            { step: 2, label: "2. Multimedia & Variantes", desc: "Foto y opciones" },
+                            { step: 3, label: "3. Atributos & Extras", desc: "Oferta, seña y contingencia" },
+                          ].map((s) => {
+                            const isActive = productWizardStep === s.step;
+                            const isDone = productWizardStep > s.step;
+                            return (
                               <button
+                                key={s.step}
                                 type="button"
-                                onClick={() => {
-                                  if (!formState.name.trim() || !formState.price) {
-                                    showToast("Por favor ingresa nombre y precio");
-                                    return;
-                                  }
-                                  setProductWizardStep(2);
-                                }}
-                                className="px-6 py-3.5 bg-gradient-to-r from-[#ffd025] to-[#e6b800] text-[#141414] font-black uppercase text-xs rounded-xl shadow-lg hover:scale-[1.01] transition-all flex items-center gap-2"
-                              >
-                                Siguiente: Multimedia & Variantes ➔
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* ── PASO 2: Multimedia & Variantes ── */}
-                        {productWizardStep === 2 && (
-                          <div className="space-y-5 animate-fade-in">
-                            <div className="p-4 sm:p-5 rounded-2xl bg-[#181826] border border-white/5 space-y-4">
-                              <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
-                                Imagen del Producto
-                              </label>
-                              <div className="flex flex-col sm:flex-row gap-4 items-center">
-                                <div className="relative w-24 h-24 rounded-2xl bg-[#12121d] border border-white/10 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
-                                  {formState.image ? (
-                                    <img
-                                      src={formState.image}
-                                      alt="Preview"
-                                      className="w-full h-full object-contain p-1"
-                                      onError={(e) => {
-                                        (e.currentTarget as HTMLImageElement).style.display = "none";
-                                      }}
-                                    />
-                                  ) : (
-                                    <div className="text-center p-2 text-gray-500">
-                                      <Package size={24} className="mx-auto mb-1 opacity-50" />
-                                      <span className="text-[9px] uppercase font-bold">Sin foto</span>
-                                    </div>
-                                  )}
-                                  {formState.image && (
-                                    <span
-                                      className={`absolute bottom-1 right-1 p-1 rounded-full text-white text-[9px] shadow ${
-                                        formState.image.includes("/storage/objects/") ? "bg-emerald-600" : "bg-blue-600"
-                                      }`}
-                                    >
-                                      {formState.image.includes("/storage/objects/") ? <HardDriveUpload size={10} /> : <Link2 size={10} />}
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="flex-1 w-full space-y-2">
-                                  <div className="flex gap-2">
-                                    <input
-                                      type="text"
-                                      placeholder="Pegar link de imagen externa (https://...)"
-                                      value={formState.image.includes("/storage/objects/") ? "" : formState.image}
-                                      onChange={(e) => setFormState({ ...formState, image: e.target.value })}
-                                      onBlur={(e) =>
-                                        resolveImageUrl(e.target.value, (resolved) =>
-                                          setFormState((prev) => ({ ...prev, image: resolved })),
-                                        )
-                                      }
-                                      className="flex-1 bg-[#12121d] border border-white/10 rounded-xl p-3 text-white text-xs focus:border-[#ffd025] focus:outline-none placeholder-gray-500"
-                                    />
-                                    <label className="cursor-pointer px-4 py-3 bg-[#ffd025]/10 text-[#ffd025] hover:bg-[#ffd025] hover:text-[#141414] rounded-xl text-xs font-black text-center transition flex items-center gap-1.5 border border-[#ffd025]/20 shrink-0">
-                                      <Upload size={14} /> Subir Foto
-                                      <input
-                                        type="file"
-                                        accept="image/*"
-                                        className="hidden"
-                                        onChange={(e) =>
-                                          handleImageUpload(e, (url) => setFormState({ ...formState, image: url }))
-                                        }
-                                      />
-                                    </label>
-                                    {formState.image && (
-                                      <button
-                                        type="button"
-                                        title="Eliminar foto"
-                                        onClick={() => {
-                                          if (formState.image.includes("/storage/objects/")) {
-                                            handleDeleteStorageImage(formState.image, () =>
-                                              setFormState({ ...formState, image: "" }),
-                                            );
-                                          } else {
-                                            setFormState({ ...formState, image: "" });
-                                          }
-                                        }}
-                                        className="px-3 py-3 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-xl text-xs font-black transition shrink-0"
-                                      >
-                                        <Trash2 size={14} />
-                                      </button>
-                                    )}
-                                  </div>
-                                  <p className="text-[11px] text-gray-500">
-                                    Formatos recomendados: JPG, PNG o WebP. Se comprime automáticamente.
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="p-4 sm:p-5 rounded-2xl bg-[#181826] border border-white/5 space-y-3">
-                              <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
-                                Opciones y Presentaciones (Opcional)
-                              </label>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <input
-                                  type="text"
-                                  placeholder="Título del selector (ej: Sabor, Tamaño, Pack)"
-                                  value={formState.optionsTitle}
-                                  onChange={(e) => setFormState({ ...formState, optionsTitle: e.target.value })}
-                                  className="bg-[#12121d] border border-white/10 rounded-xl p-3 text-white text-xs focus:border-[#ffd025] focus:outline-none"
-                                />
-                                <input
-                                  type="text"
-                                  placeholder="Opciones separadas por coma (ej: Lata 350ml, Botella 1L, Six Pack)"
-                                  value={formState.optionsString}
-                                  onChange={(e) => setFormState({ ...formState, optionsString: e.target.value })}
-                                  className="bg-[#12121d] border border-white/10 rounded-xl p-3 text-white text-xs focus:border-[#ffd025] focus:outline-none"
-                                />
-                              </div>
-                              <p className="text-[11px] text-gray-500">
-                                Los clientes podrán elegir entre estas opciones antes de añadir el producto al carrito.
-                              </p>
-                            </div>
-
-                            <div className="flex justify-between pt-4">
-                              <button
-                                type="button"
-                                onClick={() => setProductWizardStep(1)}
-                                className="px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-bold text-xs uppercase transition-colors"
-                              >
-                                ⬅ Volver al Paso 1
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setProductWizardStep(3)}
-                                className="px-6 py-3.5 bg-gradient-to-r from-[#ffd025] to-[#e6b800] text-[#141414] font-black uppercase text-xs rounded-xl shadow-lg hover:scale-[1.01] transition-all flex items-center gap-2"
-                              >
-                                Siguiente: Atributos Especiales ➔
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* ── PASO 3: Atributos Especiales & Extras ── */}
-                        {productWizardStep === 3 && (
-                          <div className="space-y-4 animate-fade-in">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              {/* Oferta Toggle */}
-                              <div
-                                onClick={() => setFormState({ ...formState, oferta: !formState.oferta })}
-                                className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                                  formState.oferta
-                                    ? "bg-gradient-to-r from-pink-600/25 to-yellow-500/15 border-pink-500 text-white"
-                                    : "bg-[#181826] border-white/10 text-gray-400 hover:border-white/20"
+                                onClick={() => setProductWizardStep(s.step as any)}
+                                className={`p-3 sm:p-4 rounded-2xl border text-left transition-all ${
+                                  isActive
+                                    ? "bg-gradient-to-r from-[#ffd025]/20 to-[#ffd025]/5 border-[#ffd025] text-white shadow-lg shadow-[#ffd025]/10"
+                                    : isDone
+                                    ? "bg-white/5 border-emerald-500/30 text-emerald-400 hover:bg-white/10"
+                                    : "bg-white/[0.02] border-white/5 text-gray-500 hover:border-white/10"
                                 }`}
                               >
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="font-black text-sm text-white flex items-center gap-1.5">
-                                    🏷️ Producto en Oferta
-                                  </span>
+                                <div className="flex items-center gap-2 mb-1">
                                   <span
-                                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                      formState.oferta ? "bg-pink-500 border-pink-500 text-white" : "border-gray-600"
+                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${
+                                      isActive
+                                        ? "bg-[#ffd025] text-[#141414]"
+                                        : isDone
+                                        ? "bg-emerald-500 text-white"
+                                        : "bg-white/10 text-gray-400"
                                     }`}
                                   >
-                                    {formState.oferta && <span className="text-[10px]">✓</span>}
+                                    {isDone ? "✓" : s.step}
                                   </span>
+                                  <span className="font-bold text-xs sm:text-sm truncate">{s.label}</span>
                                 </div>
-                                <p className="text-[11px] text-gray-400">
-                                  Destaca este producto con la etiqueta roja de oferta en el catálogo público.
-                                </p>
-                              </div>
-
-                              {/* Contingencia Toggle */}
-                              <div
-                                onClick={() =>
-                                  setFormState({ ...formState, contingencyEnabled: !formState.contingencyEnabled })
-                                }
-                                className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                                  formState.contingencyEnabled
-                                    ? "bg-gradient-to-r from-amber-600/25 to-orange-500/15 border-amber-500 text-white"
-                                    : "bg-[#181826] border-white/10 text-gray-400 hover:border-white/20"
-                                }`}
-                              >
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="font-black text-sm text-white flex items-center gap-1.5">
-                                    ⚡ Catálogo de Contingencia
-                                  </span>
-                                  <span
-                                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                      formState.contingencyEnabled ? "bg-amber-500 border-amber-500 text-white" : "border-gray-600"
-                                    }`}
-                                  >
-                                    {formState.contingencyEnabled && <span className="text-[10px]">✓</span>}
-                                  </span>
-                                </div>
-                                <p className="text-[11px] text-gray-400">
-                                  Permite que este producto se venda cuando se activa el Modo Contingencia de 30 items.
-                                </p>
-                              </div>
-
-                              {/* Retornable / Seña Toggle */}
-                              <div className="p-4 rounded-2xl bg-[#181826] border border-white/10 space-y-2.5">
-                                <div
-                                  onClick={() =>
-                                    setFormState({ ...formState, depositoEnabled: !formState.depositoEnabled })
-                                  }
-                                  className="flex items-center justify-between cursor-pointer"
-                                >
-                                  <div>
-                                    <span className="font-black text-sm text-white flex items-center gap-1.5">
-                                      🍾 Envase Retornable (Seña)
-                                    </span>
-                                    <p className="text-[11px] text-gray-400">Aplica cobro de garantía por envase.</p>
-                                  </div>
-                                  <span
-                                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                      formState.depositoEnabled ? "bg-cyan-500 border-cyan-500 text-white" : "border-gray-600"
-                                    }`}
-                                  >
-                                    {formState.depositoEnabled && <span className="text-[10px]">✓</span>}
-                                  </span>
-                                </div>
-                                {formState.depositoEnabled && (
-                                  <div className="flex items-center gap-2 pt-2 border-t border-white/5 animate-fade-in">
-                                    <label className="text-xs font-bold text-cyan-400">Valor Seña ($):</label>
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      value={formState.depositoAmount}
-                                      onChange={(e) => setFormState({ ...formState, depositoAmount: e.target.value })}
-                                      className="flex-1 bg-[#12121d] border border-cyan-500/50 rounded-lg px-2.5 py-1 text-white text-xs focus:border-cyan-400 focus:outline-none"
-                                      placeholder="500"
-                                    />
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Transferencia Fee Toggle */}
-                              <div className="p-4 rounded-2xl bg-[#181826] border border-white/10 space-y-2.5">
-                                <div
-                                  onClick={() =>
-                                    setFormState({
-                                      ...formState,
-                                      transferenciaEnabled: !formState.transferenciaEnabled,
-                                    })
-                                  }
-                                  className="flex items-center justify-between cursor-pointer"
-                                >
-                                  <div>
-                                    <span className="font-black text-sm text-white flex items-center gap-1.5">
-                                      💳 Cargo Extra Transferencia
-                                    </span>
-                                    <p className="text-[11px] text-gray-400">Aplica recargo adicional de pago.</p>
-                                  </div>
-                                  <span
-                                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                      formState.transferenciaEnabled ? "bg-blue-500 border-blue-500 text-white" : "border-gray-600"
-                                    }`}
-                                  >
-                                    {formState.transferenciaEnabled && <span className="text-[10px]">✓</span>}
-                                  </span>
-                                </div>
-                                {formState.transferenciaEnabled && (
-                                  <div className="flex items-center gap-2 pt-2 border-t border-white/5 animate-fade-in">
-                                    <label className="text-xs font-bold text-blue-400">Recargo ($):</label>
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      value={formState.transferenciaAmount}
-                                      onChange={(e) =>
-                                        setFormState({ ...formState, transferenciaAmount: e.target.value })
-                                      }
-                                      className="flex-1 bg-[#12121d] border border-blue-500/50 rounded-lg px-2.5 py-1 text-white text-xs focus:border-blue-400 focus:outline-none"
-                                      placeholder="0"
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 border-t border-white/10">
-                              <button
-                                type="button"
-                                onClick={() => setProductWizardStep(2)}
-                                className="w-full sm:w-auto px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-bold text-xs uppercase transition-colors"
-                              >
-                                ⬅ Volver al Paso 2
+                                <p className="text-[10px] text-gray-400 truncate hidden sm:block">{s.desc}</p>
                               </button>
-                              <div className="flex items-center gap-3 w-full sm:w-auto">
+                            );
+                          })}
+                        </div>
+
+                        {/* Wizard Form */}
+                        <form onSubmit={saveProduct} className="space-y-6">
+                          {/* ── PASO 1: Datos Básicos ── */}
+                          {productWizardStep === 1 && (
+                            <div className="space-y-4 animate-fade-in">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="md:col-span-2 space-y-1.5">
+                                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
+                                    Nombre del Producto *
+                                  </label>
+                                  <input
+                                    required
+                                    type="text"
+                                    placeholder="Ej: Cerveza Austral Calafate 6x330ml..."
+                                    value={formState.name}
+                                    onChange={(e) => setFormState({ ...formState, name: e.target.value })}
+                                    className="w-full bg-[#181826] border border-white/10 rounded-xl p-3.5 text-white text-sm focus:border-[#ffd025] focus:outline-none placeholder-gray-500"
+                                  />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
+                                    Precio de Venta ($ CLP) *
+                                  </label>
+                                  <input
+                                    required
+                                    type="number"
+                                    min="0"
+                                    placeholder="Ej: 12990"
+                                    value={formState.price}
+                                    onChange={(e) => setFormState({ ...formState, price: e.target.value })}
+                                    className="w-full bg-[#181826] border border-white/10 rounded-xl p-3.5 text-[#ffd025] font-black text-sm focus:border-[#ffd025] focus:outline-none"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="space-y-1.5">
+                                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
+                                    Categoría Principal *
+                                  </label>
+                                  <select
+                                    required
+                                    value={formState.category}
+                                    onChange={(e) => setFormState({ ...formState, category: e.target.value })}
+                                    className="w-full bg-[#181826] border border-white/10 rounded-xl p-3.5 text-white text-xs sm:text-sm focus:border-[#ffd025] focus:outline-none"
+                                  >
+                                    <option value="">Seleccionar Categoría...</option>
+                                    {categories.map((c) => (
+                                      <option key={c} value={c}>
+                                        {c}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
+                                    Pasillo Separador *
+                                  </label>
+                                  <select
+                                    required
+                                    value={formState.aisle}
+                                    onChange={(e) => setFormState({ ...formState, aisle: e.target.value })}
+                                    className="w-full bg-[#181826] border border-white/10 rounded-xl p-3.5 text-white text-xs sm:text-sm focus:border-[#ffd025] focus:outline-none"
+                                  >
+                                    <option value="">Seleccionar Pasillo...</option>
+                                    {aisles.map((a) => (
+                                      <option key={a} value={a}>
+                                        {a}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
+                                    Subcategoría / Tag (Opcional)
+                                  </label>
+                                  <select
+                                    value={formState.subcategory}
+                                    onChange={(e) => setFormState({ ...formState, subcategory: e.target.value })}
+                                    className="w-full bg-[#181826] border border-white/10 rounded-xl p-3.5 text-white text-xs sm:text-sm focus:border-[#ffd025] focus:outline-none"
+                                  >
+                                    <option value="">Sin subcategoría...</option>
+                                    {subcategories.map((s) => (
+                                      <option key={s} value={s}>
+                                        {s}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+
+                              <div className="flex justify-end pt-4">
                                 <button
                                   type="button"
-                                  onClick={cancelEditing}
-                                  className="flex-1 sm:flex-initial px-5 py-3 rounded-xl border border-white/10 text-gray-400 hover:text-white text-xs font-bold transition-colors"
+                                  onClick={() => {
+                                    if (!formState.name.trim() || !formState.price) {
+                                      showToast("Por favor ingresa nombre y precio");
+                                      return;
+                                    }
+                                    setProductWizardStep(2);
+                                  }}
+                                  className="px-6 py-3.5 bg-gradient-to-r from-[#ffd025] to-[#e6b800] text-[#141414] font-black uppercase text-xs rounded-xl shadow-lg hover:scale-[1.01] transition-all flex items-center gap-2 cursor-pointer"
                                 >
-                                  Plegar
-                                </button>
-                                <button
-                                  type="submit"
-                                  className="flex-1 sm:flex-initial px-8 py-3.5 bg-gradient-to-r from-[#ffd025] via-[#ffda47] to-[#e6b800] text-[#0a0a0f] rounded-xl font-black uppercase text-xs tracking-wider hover:scale-[1.01] active:scale-[0.99] transition-all shadow-xl shadow-[#ffd025]/20 flex items-center justify-center gap-2"
-                                >
-                                  <CheckCircle size={16} />
-                                  {editingProduct !== null ? "Guardar Cambios del Producto" : "Crear y Publicar Producto"}
+                                  Siguiente: Multimedia & Variantes ➔
                                 </button>
                               </div>
                             </div>
-                          </div>
-                        )}
-                      </form>
-                    </div>
-                  )}
+                          )}
+
+                          {/* ── PASO 2: Multimedia & Variantes ── */}
+                          {productWizardStep === 2 && (
+                            <div className="space-y-5 animate-fade-in">
+                              <div className="p-4 sm:p-5 rounded-2xl bg-[#181826] border border-white/5 space-y-4">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
+                                  Imagen del Producto
+                                </label>
+                                <div className="flex flex-col sm:flex-row gap-4 items-center">
+                                  <div className="relative w-24 h-24 rounded-2xl bg-[#12121d] border border-white/10 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+                                    {formState.image ? (
+                                      <img
+                                        src={formState.image}
+                                        alt="Preview"
+                                        className="w-full h-full object-contain p-1"
+                                        onError={(e) => {
+                                          (e.currentTarget as HTMLImageElement).style.display = "none";
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className="text-center p-2 text-gray-500">
+                                        <Package size={24} className="mx-auto mb-1 opacity-50" />
+                                        <span className="text-[9px] uppercase font-bold">Sin foto</span>
+                                      </div>
+                                    )}
+                                    {formState.image && (
+                                      <span
+                                        className={`absolute bottom-1 right-1 p-1 rounded-full text-white text-[9px] shadow ${
+                                          formState.image.includes("/storage/objects/") ? "bg-emerald-600" : "bg-blue-600"
+                                        }`}
+                                      >
+                                        {formState.image.includes("/storage/objects/") ? <HardDriveUpload size={10} /> : <Link2 size={10} />}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="flex-1 w-full space-y-2">
+                                    <div className="flex gap-2">
+                                      <input
+                                        type="text"
+                                        placeholder="Pegar link de imagen externa (https://...)"
+                                        value={formState.image.includes("/storage/objects/") ? "" : formState.image}
+                                        onChange={(e) => setFormState({ ...formState, image: e.target.value })}
+                                        onBlur={(e) =>
+                                          resolveImageUrl(e.target.value, (resolved) =>
+                                            setFormState((prev) => ({ ...prev, image: resolved })),
+                                          )
+                                        }
+                                        className="flex-1 bg-[#12121d] border border-white/10 rounded-xl p-3 text-white text-xs focus:border-[#ffd025] focus:outline-none placeholder-gray-500"
+                                      />
+                                      <label className="cursor-pointer px-4 py-3 bg-[#ffd025]/10 text-[#ffd025] hover:bg-[#ffd025] hover:text-[#141414] rounded-xl text-xs font-black text-center transition flex items-center gap-1.5 border border-[#ffd025]/20 shrink-0">
+                                        <Upload size={14} /> Subir Foto
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          className="hidden"
+                                          onChange={(e) =>
+                                            handleImageUpload(e, (url) => setFormState({ ...formState, image: url }))
+                                          }
+                                        />
+                                      </label>
+                                      {formState.image && (
+                                        <button
+                                          type="button"
+                                          title="Eliminar foto"
+                                          onClick={() => {
+                                            if (formState.image.includes("/storage/objects/")) {
+                                              handleDeleteStorageImage(formState.image, () =>
+                                                setFormState({ ...formState, image: "" }),
+                                              );
+                                            } else {
+                                              setFormState({ ...formState, image: "" });
+                                            }
+                                          }}
+                                          className="px-3 py-3 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-xl text-xs font-black transition shrink-0 cursor-pointer"
+                                        >
+                                          <Trash2 size={14} />
+                                        </button>
+                                      )}
+                                    </div>
+                                    <p className="text-[11px] text-gray-500">
+                                      Formatos recomendados: JPG, PNG o WebP. Se comprime automáticamente.
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="p-4 sm:p-5 rounded-2xl bg-[#181826] border border-white/5 space-y-3">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
+                                  Opciones y Presentaciones (Opcional)
+                                </label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <input
+                                    type="text"
+                                    placeholder="Título del selector (ej: Sabor, Tamaño, Pack)"
+                                    value={formState.optionsTitle}
+                                    onChange={(e) => setFormState({ ...formState, optionsTitle: e.target.value })}
+                                    className="bg-[#12121d] border border-white/10 rounded-xl p-3 text-white text-xs focus:border-[#ffd025] focus:outline-none"
+                                  />
+                                  <input
+                                    type="text"
+                                    placeholder="Opciones separadas por coma (ej: Lata 350ml, Botella 1L, Six Pack)"
+                                    value={formState.optionsString}
+                                    onChange={(e) => setFormState({ ...formState, optionsString: e.target.value })}
+                                    className="bg-[#12121d] border border-white/10 rounded-xl p-3 text-white text-xs focus:border-[#ffd025] focus:outline-none"
+                                  />
+                                </div>
+                                <p className="text-[11px] text-gray-500">
+                                  Los clientes podrán elegir entre estas opciones antes de añadir el producto al carrito.
+                                </p>
+                              </div>
+
+                              <div className="flex justify-between pt-4">
+                                <button
+                                  type="button"
+                                  onClick={() => setProductWizardStep(1)}
+                                  className="px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-bold text-xs uppercase transition-colors cursor-pointer"
+                                >
+                                  ⬅ Volver al Paso 1
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setProductWizardStep(3)}
+                                  className="px-6 py-3.5 bg-gradient-to-r from-[#ffd025] to-[#e6b800] text-[#141414] font-black uppercase text-xs rounded-xl shadow-lg hover:scale-[1.01] transition-all flex items-center gap-2 cursor-pointer"
+                                >
+                                  Siguiente: Atributos Especiales ➔
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* ── PASO 3: Atributos Especiales & Extras ── */}
+                          {productWizardStep === 3 && (
+                            <div className="space-y-4 animate-fade-in">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {/* Oferta Toggle */}
+                                <div
+                                  onClick={() => setFormState({ ...formState, oferta: !formState.oferta })}
+                                  className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                                    formState.oferta
+                                      ? "bg-gradient-to-r from-pink-600/25 to-yellow-500/15 border-pink-500 text-white"
+                                      : "bg-[#181826] border-white/10 text-gray-400 hover:border-white/20"
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="font-black text-sm text-white flex items-center gap-1.5">
+                                      🏷️ Producto en Oferta
+                                    </span>
+                                    <span
+                                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                        formState.oferta ? "bg-pink-500 border-pink-500 text-white" : "border-gray-600"
+                                      }`}
+                                    >
+                                      {formState.oferta && <span className="text-[10px]">✓</span>}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-gray-400">
+                                    Destaca este producto con la etiqueta roja de oferta en el catálogo público.
+                                  </p>
+                                </div>
+
+                                {/* Contingencia Toggle */}
+                                <div
+                                  onClick={() =>
+                                    setFormState({ ...formState, contingencyEnabled: !formState.contingencyEnabled })
+                                  }
+                                  className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                                    formState.contingencyEnabled
+                                      ? "bg-gradient-to-r from-amber-600/25 to-orange-500/15 border-amber-500 text-white"
+                                      : "bg-[#181826] border-white/10 text-gray-400 hover:border-white/20"
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="font-black text-sm text-white flex items-center gap-1.5">
+                                      ⚡ Catálogo de Contingencia
+                                    </span>
+                                    <span
+                                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                        formState.contingencyEnabled ? "bg-amber-500 border-amber-500 text-white" : "border-gray-600"
+                                      }`}
+                                    >
+                                      {formState.contingencyEnabled && <span className="text-[10px]">✓</span>}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-gray-400">
+                                    Permite que este producto se venda cuando se activa el Modo Contingencia de 30 items.
+                                  </p>
+                                </div>
+
+                                {/* Retornable / Seña Toggle */}
+                                <div className="p-4 rounded-2xl bg-[#181826] border border-white/10 space-y-2.5">
+                                  <div
+                                    onClick={() =>
+                                      setFormState({ ...formState, depositoEnabled: !formState.depositoEnabled })
+                                    }
+                                    className="flex items-center justify-between cursor-pointer"
+                                  >
+                                    <div>
+                                      <span className="font-black text-sm text-white flex items-center gap-1.5">
+                                        🍾 Envase Retornable (Seña)
+                                      </span>
+                                      <p className="text-[11px] text-gray-400">Aplica cobro de garantía por envase.</p>
+                                    </div>
+                                    <span
+                                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                        formState.depositoEnabled ? "bg-cyan-500 border-cyan-500 text-white" : "border-gray-600"
+                                      }`}
+                                    >
+                                      {formState.depositoEnabled && <span className="text-[10px]">✓</span>}
+                                    </span>
+                                  </div>
+                                  {formState.depositoEnabled && (
+                                    <div className="flex items-center gap-2 pt-2 border-t border-white/5 animate-fade-in">
+                                      <label className="text-xs font-bold text-cyan-400">Valor Seña ($):</label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={formState.depositoAmount}
+                                        onChange={(e) => setFormState({ ...formState, depositoAmount: e.target.value })}
+                                        className="flex-1 bg-[#12121d] border border-cyan-500/50 rounded-lg px-2.5 py-1 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                                        placeholder="500"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Transferencia Fee Toggle */}
+                                <div className="p-4 rounded-2xl bg-[#181826] border border-white/10 space-y-2.5">
+                                  <div
+                                    onClick={() =>
+                                      setFormState({
+                                        ...formState,
+                                        transferenciaEnabled: !formState.transferenciaEnabled,
+                                      })
+                                    }
+                                    className="flex items-center justify-between cursor-pointer"
+                                  >
+                                    <div>
+                                      <span className="font-black text-sm text-white flex items-center gap-1.5">
+                                        💳 Cargo Extra Transferencia
+                                      </span>
+                                      <p className="text-[11px] text-gray-400">Aplica recargo adicional de pago.</p>
+                                    </div>
+                                    <span
+                                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                        formState.transferenciaEnabled ? "bg-blue-500 border-blue-500 text-white" : "border-gray-600"
+                                      }`}
+                                    >
+                                      {formState.transferenciaEnabled && <span className="text-[10px]">✓</span>}
+                                    </span>
+                                  </div>
+                                  {formState.transferenciaEnabled && (
+                                    <div className="flex items-center gap-2 pt-2 border-t border-white/5 animate-fade-in">
+                                      <label className="text-xs font-bold text-blue-400">Recargo ($):</label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={formState.transferenciaAmount}
+                                        onChange={(e) =>
+                                          setFormState({ ...formState, transferenciaAmount: e.target.value })
+                                        }
+                                        className="flex-1 bg-[#12121d] border border-blue-500/50 rounded-lg px-2.5 py-1 text-white text-xs focus:border-blue-400 focus:outline-none"
+                                        placeholder="0"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 border-t border-white/10">
+                                <button
+                                  type="button"
+                                  onClick={() => setProductWizardStep(2)}
+                                  className="w-full sm:w-auto px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-bold text-xs uppercase transition-colors cursor-pointer"
+                                >
+                                  ⬅ Volver al Paso 2
+                                </button>
+                                <div className="flex items-center gap-3 w-full sm:w-auto">
+                                  <button
+                                    type="button"
+                                    onClick={cancelEditing}
+                                    className="flex-1 sm:flex-initial px-5 py-3 rounded-xl border border-white/10 text-gray-400 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+                                  >
+                                    Plegar
+                                  </button>
+                                  <button
+                                    type="submit"
+                                    className="flex-1 sm:flex-initial px-8 py-3.5 bg-gradient-to-r from-[#ffd025] via-[#ffda47] to-[#e6b800] text-[#0a0a0f] rounded-xl font-black uppercase text-xs tracking-wider hover:scale-[1.01] active:scale-[0.99] transition-all shadow-xl shadow-[#ffd025]/20 flex items-center justify-center gap-2 cursor-pointer"
+                                  >
+                                    <CheckCircle size={16} />
+                                    {editingProduct !== null ? "Guardar Cambios del Producto" : "Crear y Publicar Producto"}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </form>
+                      </div>
+                    );
+
+                    return (
+                      <>
+                        {/* Top Wizard (solo cuando se añade nuevo producto) */}
+                        {showAddProductModal && editingProduct === null && renderWizardBlock()}
 
                   {/* Main Catalog View Container */}
                   <div className="bg-[#13131f]/90 backdrop-blur-2xl p-6 sm:p-8 rounded-3xl border border-white/10 shadow-2xl shadow-black/80 space-y-6">
@@ -8968,197 +8966,225 @@ export default function Storefront() {
                                   {productViewMode === "grid" ? (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                       {items.map((product) => (
-                                        <div
-                                          key={product.id}
-                                          className={`group relative rounded-2xl border p-4 transition-all flex flex-col justify-between ${
-                                            product.hidden
-                                              ? "bg-[#14141e]/50 border-white/5 opacity-50"
-                                              : "bg-[#181828] border-white/10 hover:border-[#ffd025]/50 hover:shadow-xl hover:shadow-black/60"
-                                          }`}
-                                        >
-                                          {/* Card Top: Badges & Photo */}
-                                          <div>
-                                            <div className="relative w-full h-36 rounded-xl bg-[#12121d] border border-white/5 mb-3 flex items-center justify-center overflow-hidden">
-                                              {product.image ? (
-                                                <img
-                                                  loading="lazy"
-                                                  src={product.image}
-                                                  alt={product.name}
-                                                  className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300"
-                                                  onError={(e) => {
-                                                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                                                  }}
-                                                />
-                                              ) : (
-                                                <div className="text-gray-600 flex flex-col items-center">
-                                                  <Package size={30} className="mb-1 opacity-40" />
-                                                  <span className="text-[9px] uppercase font-bold">Sin foto</span>
-                                                </div>
-                                              )}
+                                        <Fragment key={product.id}>
+                                          <div
+                                            id={`product-card-${product.id}`}
+                                            className={`group relative rounded-2xl border p-4 transition-all flex flex-col justify-between ${
+                                              editingProduct === product.id
+                                                ? "bg-[#181828] border-[#ffd025] ring-2 ring-[#ffd025]/50 shadow-2xl shadow-[#ffd025]/10"
+                                                : product.hidden
+                                                ? "bg-[#14141e]/50 border-white/5 opacity-50"
+                                                : "bg-[#181828] border-white/10 hover:border-[#ffd025]/50 hover:shadow-xl hover:shadow-black/60"
+                                            }`}
+                                          >
+                                            {/* Card Top: Badges & Photo */}
+                                            <div>
+                                              <div className="relative w-full h-36 rounded-xl bg-[#12121d] border border-white/5 mb-3 flex items-center justify-center overflow-hidden">
+                                                {product.image ? (
+                                                  <img
+                                                    loading="lazy"
+                                                    src={product.image}
+                                                    alt={product.name}
+                                                    className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300"
+                                                    onError={(e) => {
+                                                      (e.currentTarget as HTMLImageElement).style.display = "none";
+                                                    }}
+                                                  />
+                                                ) : (
+                                                  <div className="text-gray-600 flex flex-col items-center">
+                                                    <Package size={30} className="mb-1 opacity-40" />
+                                                    <span className="text-[9px] uppercase font-bold">Sin foto</span>
+                                                  </div>
+                                                )}
 
-                                              {/* Badges on image */}
-                                              <div className="absolute top-2 left-2 flex flex-col gap-1">
-                                                {product.oferta && (
-                                                  <span className="text-[9px] font-black uppercase text-white bg-pink-600 px-2 py-0.5 rounded-md shadow-md">
-                                                    🔥 Oferta
-                                                  </span>
-                                                )}
-                                                {product.contingencyEnabled && (
-                                                  <span className="text-[9px] font-black uppercase text-white bg-amber-600 px-2 py-0.5 rounded-md shadow-md">
-                                                    ⚡ Contingencia
-                                                  </span>
-                                                )}
-                                                {product.depositoEnabled && (
-                                                  <span className="text-[9px] font-black uppercase text-white bg-cyan-600 px-2 py-0.5 rounded-md shadow-md">
-                                                    🍾 Retornable
-                                                  </span>
+                                                {/* Badges on image */}
+                                                <div className="absolute top-2 left-2 flex flex-col gap-1">
+                                                  {product.oferta && (
+                                                    <span className="text-[9px] font-black uppercase text-white bg-pink-600 px-2 py-0.5 rounded-md shadow-md">
+                                                      🔥 Oferta
+                                                    </span>
+                                                  )}
+                                                  {product.contingencyEnabled && (
+                                                    <span className="text-[9px] font-black uppercase text-white bg-amber-600 px-2 py-0.5 rounded-md shadow-md">
+                                                      ⚡ Contingencia
+                                                    </span>
+                                                  )}
+                                                  {product.depositoEnabled && (
+                                                    <span className="text-[9px] font-black uppercase text-white bg-cyan-600 px-2 py-0.5 rounded-md shadow-md">
+                                                      🍾 Retornable
+                                                    </span>
+                                                  )}
+                                                </div>
+
+                                                {/* Visibility badge */}
+                                                {product.hidden && (
+                                                  <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center">
+                                                    <span className="text-xs font-bold text-gray-300 flex items-center gap-1">
+                                                      <EyeOff size={14} /> Oculto
+                                                    </span>
+                                                  </div>
                                                 )}
                                               </div>
 
-                                              {/* Visibility badge */}
-                                              {product.hidden && (
-                                                <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center">
-                                                  <span className="text-xs font-bold text-gray-300 flex items-center gap-1">
-                                                    <EyeOff size={14} /> Oculto
-                                                  </span>
-                                                </div>
-                                              )}
-                                            </div>
+                                              {/* Details */}
+                                              <h4 className="font-bold text-white text-sm line-clamp-2 leading-snug mb-1">
+                                                {product.name}
+                                              </h4>
 
-                                            {/* Details */}
-                                            <h4 className="font-bold text-white text-sm line-clamp-2 leading-snug mb-1">
-                                              {product.name}
-                                            </h4>
-
-                                            <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-gray-400 mb-2">
-                                              <span className="bg-white/5 px-2 py-0.5 rounded-md border border-white/5">
-                                                {product.category}
-                                              </span>
-                                              {product.subcategory && (
-                                                <span className="bg-[#ffd025]/10 text-[#ffd025] px-2 py-0.5 rounded-md border border-[#ffd025]/20">
-                                                  {product.subcategory}
+                                              <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-gray-400 mb-2">
+                                                <span className="bg-white/5 px-2 py-0.5 rounded-md border border-white/5">
+                                                  {product.category}
                                                 </span>
+                                                {product.subcategory && (
+                                                  <span className="bg-[#ffd025]/10 text-[#ffd025] px-2 py-0.5 rounded-md border border-[#ffd025]/20">
+                                                    {product.subcategory}
+                                                  </span>
+                                                )}
+                                              </div>
+
+                                              {product.options && product.options.length > 0 && (
+                                                <p className="text-[10px] text-blue-400 line-clamp-1 mb-2">
+                                                  Opciones: {product.options.join(", ")}
+                                                </p>
                                               )}
                                             </div>
 
-                                            {product.options && product.options.length > 0 && (
-                                              <p className="text-[10px] text-blue-400 line-clamp-1 mb-2">
-                                                Opciones: {product.options.join(", ")}
-                                              </p>
-                                            )}
-                                          </div>
+                                            {/* Card Bottom: Price and Actions */}
+                                            <div className="pt-3 border-t border-white/5 space-y-3">
+                                              <div className="flex items-center justify-between">
+                                                <span className="text-lg font-black text-[#ffd025]">
+                                                  ${product.price.toLocaleString("es-CL")}
+                                                </span>
+                                                <div className="flex items-center gap-1">
+                                                  <button
+                                                    title="Subir posición"
+                                                    onClick={() => moveProduct(product.id, "up", groupIds)}
+                                                    disabled={groupIds.indexOf(product.id) === 0}
+                                                    className="p-1 text-gray-400 hover:text-[#ffd025] disabled:opacity-20 transition-colors"
+                                                  >
+                                                    <ChevronUp size={15} />
+                                                  </button>
+                                                  <button
+                                                    title="Bajar posición"
+                                                    onClick={() => moveProduct(product.id, "down", groupIds)}
+                                                    disabled={groupIds.indexOf(product.id) === groupIds.length - 1}
+                                                    className="p-1 text-gray-400 hover:text-[#ffd025] disabled:opacity-20 transition-colors"
+                                                  >
+                                                    <ChevronDown size={15} />
+                                                  </button>
+                                                </div>
+                                              </div>
 
-                                          {/* Card Bottom: Price and Actions */}
-                                          <div className="pt-3 border-t border-white/5 space-y-3">
-                                            <div className="flex items-center justify-between">
-                                              <span className="text-lg font-black text-[#ffd025]">
-                                                ${product.price.toLocaleString("es-CL")}
-                                              </span>
-                                              <div className="flex items-center gap-1">
+                                              <div className="flex items-center justify-between gap-1 pt-1">
+                                                {/* Social Share toggle */}
                                                 <button
-                                                  title="Subir posición"
-                                                  onClick={() => moveProduct(product.id, "up", groupIds)}
-                                                  disabled={groupIds.indexOf(product.id) === 0}
-                                                  className="p-1 text-gray-400 hover:text-[#ffd025] disabled:opacity-20 transition-colors"
+                                                  title={
+                                                    product.publishedSocial
+                                                      ? "Publicado en redes ✓"
+                                                      : "Marcar publicado en redes"
+                                                  }
+                                                  onClick={() => {
+                                                    const newVal = !product.publishedSocial;
+                                                    queryClient.setQueryData(getGetMenuQueryKey(), (old: any) =>
+                                                      old
+                                                        ? {
+                                                            ...old,
+                                                            products: old.products.map((p: any) =>
+                                                              p.id === product.id ? { ...p, publishedSocial: newVal } : p,
+                                                            ),
+                                                          }
+                                                        : old,
+                                                    );
+                                                    updateProductMut.mutate({
+                                                      id: product.id,
+                                                      data: { ...product, publishedSocial: newVal },
+                                                    });
+                                                  }}
+                                                  className={`p-2 rounded-xl text-xs transition-colors ${
+                                                    product.publishedSocial
+                                                      ? "bg-green-500/20 text-green-400"
+                                                      : "bg-white/5 text-gray-500 hover:text-green-400"
+                                                  }`}
                                                 >
-                                                  <ChevronUp size={15} />
+                                                  <CheckCircle size={15} />
                                                 </button>
+
+                                                {/* Hide/Show Toggle */}
                                                 <button
-                                                  title="Bajar posición"
-                                                  onClick={() => moveProduct(product.id, "down", groupIds)}
-                                                  disabled={groupIds.indexOf(product.id) === groupIds.length - 1}
-                                                  className="p-1 text-gray-400 hover:text-[#ffd025] disabled:opacity-20 transition-colors"
+                                                  title={product.hidden ? "Mostrar en tienda" : "Ocultar de la tienda"}
+                                                  onClick={() => {
+                                                    const newVal = !product.hidden;
+                                                    queryClient.setQueryData(getGetMenuQueryKey(), (old: any) =>
+                                                      old
+                                                        ? {
+                                                            ...old,
+                                                            products: old.products.map((p: any) =>
+                                                              p.id === product.id ? { ...p, hidden: newVal } : p,
+                                                            ),
+                                                          }
+                                                        : old,
+                                                    );
+                                                    updateProductMut.mutate({
+                                                      id: product.id,
+                                                      data: { ...product, hidden: newVal },
+                                                    });
+                                                  }}
+                                                  className={`p-2 rounded-xl text-xs transition-colors ${
+                                                    product.hidden
+                                                      ? "bg-amber-500/20 text-amber-400"
+                                                      : "bg-white/5 text-gray-500 hover:text-amber-400"
+                                                  }`}
                                                 >
-                                                  <ChevronDown size={15} />
+                                                  {product.hidden ? <EyeOff size={15} /> : <Eye size={15} />}
+                                                </button>
+
+                                                {/* Edit Button */}
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    if (editingProduct === product.id) {
+                                                      cancelEditing();
+                                                    } else {
+                                                      startEditing(product);
+                                                      setTimeout(() => {
+                                                        const el = document.getElementById(`product-editor-${product.id}`);
+                                                        if (el) {
+                                                          el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                                                        }
+                                                      }, 50);
+                                                    }
+                                                  }}
+                                                  className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                                                    editingProduct === product.id
+                                                      ? "bg-[#ffd025] text-[#141414] hover:bg-[#e5b81a] shadow-md shadow-[#ffd025]/20 font-black"
+                                                      : "bg-blue-500/10 hover:bg-blue-500/20 text-blue-400"
+                                                  }`}
+                                                >
+                                                  <Pencil size={13} /> {editingProduct === product.id ? "Plegar" : "Editar"}
+                                                </button>
+
+                                                {/* Delete Button */}
+                                                <button
+                                                  onClick={() => deleteProductHandler(product.id)}
+                                                  className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs transition-colors"
+                                                  title="Eliminar producto"
+                                                >
+                                                  <Trash2 size={15} />
                                                 </button>
                                               </div>
                                             </div>
-
-                                            <div className="flex items-center justify-between gap-1 pt-1">
-                                              {/* Social Share toggle */}
-                                              <button
-                                                title={
-                                                  product.publishedSocial
-                                                    ? "Publicado en redes ✓"
-                                                    : "Marcar publicado en redes"
-                                                }
-                                                onClick={() => {
-                                                  const newVal = !product.publishedSocial;
-                                                  queryClient.setQueryData(getGetMenuQueryKey(), (old: any) =>
-                                                    old
-                                                      ? {
-                                                          ...old,
-                                                          products: old.products.map((p: any) =>
-                                                            p.id === product.id ? { ...p, publishedSocial: newVal } : p,
-                                                          ),
-                                                        }
-                                                      : old,
-                                                  );
-                                                  updateProductMut.mutate({
-                                                    id: product.id,
-                                                    data: { ...product, publishedSocial: newVal },
-                                                  });
-                                                }}
-                                                className={`p-2 rounded-xl text-xs transition-colors ${
-                                                  product.publishedSocial
-                                                    ? "bg-green-500/20 text-green-400"
-                                                    : "bg-white/5 text-gray-500 hover:text-green-400"
-                                                }`}
-                                              >
-                                                <CheckCircle size={15} />
-                                              </button>
-
-                                              {/* Hide/Show Toggle */}
-                                              <button
-                                                title={product.hidden ? "Mostrar en tienda" : "Ocultar de la tienda"}
-                                                onClick={() => {
-                                                  const newVal = !product.hidden;
-                                                  queryClient.setQueryData(getGetMenuQueryKey(), (old: any) =>
-                                                    old
-                                                      ? {
-                                                          ...old,
-                                                          products: old.products.map((p: any) =>
-                                                            p.id === product.id ? { ...p, hidden: newVal } : p,
-                                                          ),
-                                                        }
-                                                      : old,
-                                                  );
-                                                  updateProductMut.mutate({
-                                                    id: product.id,
-                                                    data: { ...product, hidden: newVal },
-                                                  });
-                                                }}
-                                                className={`p-2 rounded-xl text-xs transition-colors ${
-                                                  product.hidden
-                                                    ? "bg-amber-500/20 text-amber-400"
-                                                    : "bg-white/5 text-gray-500 hover:text-amber-400"
-                                                }`}
-                                              >
-                                                {product.hidden ? <EyeOff size={15} /> : <Eye size={15} />}
-                                              </button>
-
-                                              {/* Edit Button */}
-                                              <button
-                                                onClick={() => {
-                                                  startEditing(product);
-                                                  window.scrollTo({ top: 0, behavior: "smooth" });
-                                                }}
-                                                className="flex-1 py-1.5 px-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-bold transition-colors flex items-center justify-center gap-1"
-                                              >
-                                                <Pencil size={13} /> Editar
-                                              </button>
-
-                                              {/* Delete Button */}
-                                              <button
-                                                onClick={() => deleteProductHandler(product.id)}
-                                                className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs transition-colors"
-                                                title="Eliminar producto"
-                                              >
-                                                <Trash2 size={15} />
-                                              </button>
-                                            </div>
                                           </div>
-                                        </div>
+
+                                          {/* Editor de producto inline desplegable a la misma altura */}
+                                          {editingProduct === product.id && (
+                                            <div
+                                              id={`product-editor-${product.id}`}
+                                              className="col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-4 w-full"
+                                            >
+                                              {renderWizardBlock(product)}
+                                            </div>
+                                          )}
+                                        </Fragment>
                                       ))}
                                     </div>
                                   ) : (
@@ -9176,10 +9202,15 @@ export default function Storefront() {
                                         </thead>
                                         <tbody className="divide-y divide-white/5">
                                           {items.map((product) => (
-                                            <tr
-                                              key={product.id}
-                                              className="hover:bg-white/[0.02] transition-colors group"
-                                            >
+                                            <Fragment key={product.id}>
+                                              <tr
+                                                id={`product-row-${product.id}`}
+                                                className={`transition-colors group ${
+                                                  editingProduct === product.id
+                                                    ? "bg-[#ffd025]/10 border-l-4 border-l-[#ffd025]"
+                                                    : "hover:bg-white/[0.02]"
+                                                }`}
+                                              >
                                               <td className="py-3 px-3">
                                                 <div className="flex items-center gap-3">
                                                   <div className="w-10 h-10 rounded-lg bg-[#12121d] border border-white/5 flex items-center justify-center overflow-hidden shrink-0">
@@ -9237,12 +9268,26 @@ export default function Storefront() {
                                               <td className="py-3 px-3 text-right">
                                                 <div className="flex items-center justify-end gap-1.5">
                                                   <button
+                                                    type="button"
                                                     onClick={() => {
-                                                      startEditing(product);
-                                                      window.scrollTo({ top: 0, behavior: "smooth" });
+                                                      if (editingProduct === product.id) {
+                                                        cancelEditing();
+                                                      } else {
+                                                        startEditing(product);
+                                                        setTimeout(() => {
+                                                          const el = document.getElementById(`product-editor-table-${product.id}`);
+                                                          if (el) {
+                                                            el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                                                          }
+                                                        }, 50);
+                                                      }
                                                     }}
-                                                    className="p-1.5 text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors"
-                                                    title="Editar"
+                                                    className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                                      editingProduct === product.id
+                                                        ? "bg-[#ffd025] text-black shadow font-bold"
+                                                        : "text-blue-400 hover:bg-blue-400/10"
+                                                    }`}
+                                                    title={editingProduct === product.id ? "Plegar editor" : "Editar"}
                                                   >
                                                     <Pencil size={15} />
                                                   </button>
@@ -9256,8 +9301,16 @@ export default function Storefront() {
                                                 </div>
                                               </td>
                                             </tr>
-                                          ))}
-                                        </tbody>
+                                            {editingProduct === product.id && (
+                                              <tr id={`product-editor-table-${product.id}`}>
+                                                <td colSpan={5} className="p-3 sm:p-5 bg-[#0e0e18] border-y-2 border-[#ffd025]">
+                                                  {renderWizardBlock(product)}
+                                                </td>
+                                              </tr>
+                                            )}
+                                          </Fragment>
+                                        ))}
+                                      </tbody>
                                       </table>
                                     </div>
                                   )}
@@ -9269,9 +9322,12 @@ export default function Storefront() {
                       })()}
                     </div>
                   </div>
-                </div>
-              );
-            })()}
+                  </>
+                );
+              })()}
+            </div>
+          );
+        })()}
 
             </main>
           </div>
